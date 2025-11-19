@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Logo from "@/components/ui/Logo";
 
 interface Seller {
   id: string;
@@ -50,6 +51,7 @@ export default function AdminSellersPage() {
 
   const handleShowDetail = (seller: Seller) => {
     setSelectedSeller(seller);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleApprove = async () => {
@@ -126,44 +128,64 @@ export default function AdminSellersPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#0779FF] mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
+    <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
       {/* Header */}
-      <header className="bg-[#343a40] text-white p-6 shadow-lg">
+      <header className="bg-[#2a2a2a] text-white p-6 shadow-2xl border-b border-[#3a3a3a]">
         <div className="container mx-auto">
-          <h1 className="text-3xl font-bold">Admin Platform - Warungpedia</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Logo size="lg" variant="white" showText={true} href="/" />
+              <div className="h-8 w-px bg-[#3a3a3a]"></div>
+              <div>
+                <h1 className="text-2xl font-bold">Admin Platform</h1>
+                <p className="text-sm text-gray-400">
+                  Panel Verifikasi Penjual
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto p-8">
-        <h2 className="text-2xl font-bold text-white mb-6">
-          Verifikasi Pendaftaran Penjual
-        </h2>
+      <div className="flex-grow container mx-auto p-8">
+        {/* Page Title */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            Verifikasi Pendaftaran Penjual
+          </h2>
+          <p className="text-gray-400">
+            Kelola dan verifikasi pendaftaran calon penjual
+          </p>
+        </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="bg-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden border border-[#3a3a3a]">
           <table className="w-full">
-            <thead className="bg-[#f8f9fa]">
+            <thead className="bg-[#1a1a1a]">
               <tr>
-                <th className="p-4 text-left text-gray-700 font-semibold">
+                <th className="p-4 text-left text-gray-300 font-semibold">
                   Tanggal Daftar
                 </th>
-                <th className="p-4 text-left text-gray-700 font-semibold">
+                <th className="p-4 text-left text-gray-300 font-semibold">
                   Nama Toko
                 </th>
-                <th className="p-4 text-left text-gray-700 font-semibold">
+                <th className="p-4 text-left text-gray-300 font-semibold">
                   Nama PIC
                 </th>
-                <th className="p-4 text-left text-gray-700 font-semibold">
+                <th className="p-4 text-left text-gray-300 font-semibold">
                   Status
                 </th>
-                <th className="p-4 text-left text-gray-700 font-semibold">
+                <th className="p-4 text-left text-gray-300 font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -172,26 +194,48 @@ export default function AdminSellersPage() {
               {sellers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">
-                    Tidak ada pendaftaran yang menunggu verifikasi
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <svg
+                        className="w-16 h-16 text-gray-600 mb-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                        />
+                      </svg>
+                      <p className="text-xl font-semibold">
+                        Tidak ada pendaftaran yang menunggu verifikasi
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 sellers.map((seller) => (
-                  <tr key={seller.id} className="border-b hover:bg-gray-50">
-                    <td className="p-4">
+                  <tr
+                    key={seller.id}
+                    className="border-b border-[#3a3a3a] hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <td className="p-4 text-gray-300">
                       {new Date(seller.created_at).toLocaleString("id-ID")}
                     </td>
-                    <td className="p-4 font-medium">{seller.store_name}</td>
-                    <td className="p-4">{seller.pic_name}</td>
+                    <td className="p-4 font-medium text-white">
+                      {seller.store_name}
+                    </td>
+                    <td className="p-4 text-gray-300">{seller.pic_name}</td>
                     <td className="p-4">
-                      <span className="bg-yellow-400 text-black px-3 py-1 rounded-md text-sm font-bold">
+                      <span className="bg-yellow-500 text-black px-3 py-1 rounded-lg text-sm font-bold">
                         {seller.status}
                       </span>
                     </td>
                     <td className="p-4">
                       <button
                         onClick={() => handleShowDetail(seller)}
-                        className="bg-[#17a2b8] text-white px-4 py-2 rounded-md hover:bg-[#138496] font-semibold"
+                        className="bg-[#0779FF] text-white px-4 py-2 rounded-lg hover:bg-[#0669dd] font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
                       >
                         Lihat Detail
                       </button>
@@ -205,116 +249,153 @@ export default function AdminSellersPage() {
 
         {/* Detail Panel */}
         {selectedSeller && (
-          <div className="bg-white rounded-lg shadow-lg p-8 mt-8">
-            <h3 className="text-2xl font-bold mb-4">
-              Detail Verifikasi: {selectedSeller.store_name}
-            </h3>
-            <hr className="mb-6" />
+          <div className="bg-[#2a2a2a] rounded-2xl shadow-2xl p-8 mt-8 border border-[#3a3a3a]">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Detail Verifikasi: {selectedSeller.store_name}
+                </h3>
+                <p className="text-gray-400">
+                  Periksa kelengkapan data administrasi calon penjual
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedSeller(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Tutup detail"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <hr className="border-[#3a3a3a] mb-6" />
 
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column - Data */}
               <div className="space-y-4">
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
                     Nama Toko
                   </label>
-                  <p className="text-lg">{selectedSeller.store_name}</p>
+                  <p className="text-lg text-white font-medium">
+                    {selectedSeller.store_name}
+                  </p>
                 </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
                     Deskripsi
                   </label>
-                  <p className="text-lg">
+                  <p className="text-lg text-white">
                     {selectedSeller.store_description || "-"}
                   </p>
                 </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
                     Nama PIC
                   </label>
-                  <p className="text-lg">{selectedSeller.pic_name}</p>
-                </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
-                    Email
-                  </label>
-                  <p className="text-lg">{selectedSeller.pic_email}</p>
-                </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
-                    No HP
-                  </label>
-                  <p className="text-lg">{selectedSeller.pic_phone}</p>
-                </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
-                    Alamat Lengkap
-                  </label>
-                  <p className="text-lg">
-                    {selectedSeller.pic_street}, RT {selectedSeller.pic_rt} / RW{" "}
-                    {selectedSeller.pic_rw}
-                    <br />
-                    Kel. {selectedSeller.pic_village}, {selectedSeller.pic_city}
-                    <br />
-                    {selectedSeller.pic_province}
+                  <p className="text-lg text-white">
+                    {selectedSeller.pic_name}
                   </p>
                 </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
+                    Email
+                  </label>
+                  <p className="text-lg text-[#0779FF]">
+                    {selectedSeller.pic_email}
+                  </p>
+                </div>
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
+                    No HP
+                  </label>
+                  <p className="text-lg text-white">
+                    {selectedSeller.pic_phone}
+                  </p>
+                </div>
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
+                    Alamat Lengkap
+                  </label>
+                  <p className="text-base text-white leading-relaxed">
+                    {selectedSeller.pic_street}
+                    <br />
+                    RT {selectedSeller.pic_rt} / RW {selectedSeller.pic_rw}
+                    <br />
+                    Kel. {selectedSeller.pic_village}
+                    <br />
+                    {selectedSeller.pic_city}, {selectedSeller.pic_province}
+                  </p>
+                </div>
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-1 uppercase tracking-wider">
                     No. KTP
                   </label>
-                  <p className="text-lg">{selectedSeller.pic_ktp_number}</p>
+                  <p className="text-lg text-white font-mono">
+                    {selectedSeller.pic_ktp_number}
+                  </p>
                 </div>
               </div>
 
               {/* Right Column - Files */}
               <div className="space-y-6">
-                <div>
-                  <label className="text-gray-600 text-sm font-bold block mb-2">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-3 uppercase tracking-wider">
                     Foto PIC
                   </label>
-                  <div className="border border-dashed border-gray-300 rounded-lg overflow-hidden">
+                  <div className="border-2 border-dashed border-[#3a3a3a] rounded-lg overflow-hidden hover:border-[#0779FF] transition-colors">
                     <Image
                       src={selectedSeller.pic_photo_path}
                       alt="Foto PIC"
-                      width={400}
-                      height={300}
-                      className="w-full h-64 object-cover"
+                      width={500}
+                      height={400}
+                      className="w-full h-80 object-cover"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-bold block mb-2">
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#3a3a3a]">
+                  <label className="text-gray-500 text-xs font-bold block mb-3 uppercase tracking-wider">
                     File KTP
                   </label>
-                  <div className="border border-dashed border-gray-300 rounded-lg overflow-hidden">
+                  <div className="border-2 border-dashed border-[#3a3a3a] rounded-lg overflow-hidden hover:border-[#0779FF] transition-colors">
                     <Image
                       src={selectedSeller.pic_ktp_file_path}
                       alt="File KTP"
-                      width={400}
-                      height={300}
-                      className="w-full h-64 object-cover"
+                      width={500}
+                      height={400}
+                      className="w-full h-80 object-cover"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <hr className="my-6" />
+            <hr className="border-[#3a3a3a] my-8" />
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-4">
               <button
                 onClick={() => setShowRejectModal(true)}
-                className="bg-[#dc3545] text-white px-6 py-3 rounded-md hover:bg-[#c82333] font-bold"
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-bold transition-all shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
               >
-                Tolak Pendaftaran
+                ✕ Tolak Pendaftaran
               </button>
               <button
                 onClick={handleApprove}
-                className="bg-[#28a745] text-white px-6 py-3 rounded-md hover:bg-[#218838] font-bold"
+                className="bg-[#0779FF] hover:bg-[#0669dd] text-white px-8 py-4 rounded-lg font-bold transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
               >
-                Terima & Aktifkan
+                ✓ Terima & Aktifkan
               </button>
             </div>
           </div>
@@ -322,29 +403,51 @@ export default function AdminSellersPage() {
 
         {/* Reject Modal */}
         {showRejectModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full">
-              <h3 className="text-xl font-bold mb-4">Alasan Penolakan</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#2a2a2a] rounded-2xl p-8 max-w-md w-full border border-[#3a3a3a] shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-600 rounded-full p-2">
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-white">
+                  Alasan Penolakan
+                </h3>
+              </div>
+              <p className="text-gray-400 mb-6">
+                Jelaskan alasan penolakan pendaftaran ini
+              </p>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+                className="w-full p-4 bg-[#1a1a1a] border border-[#3a3a3a] rounded-lg mb-6 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent transition-all"
                 rows={4}
                 placeholder="Masukkan alasan penolakan..."
               />
-              <div className="flex justify-end gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => {
                     setShowRejectModal(false);
                     setRejectReason("");
                   }}
-                  className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+                  className="flex-1 px-6 py-3 bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white rounded-lg font-semibold transition-all"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleReject}
-                  className="px-4 py-2 bg-[#dc3545] text-white rounded-md hover:bg-[#c82333]"
+                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
                 >
                   Kirim Penolakan
                 </button>
@@ -353,6 +456,29 @@ export default function AdminSellersPage() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="bg-[#1a1a1a] border-t border-[#3a3a3a] py-6 px-4 mt-auto">
+        <div className="container mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Logo size="sm" variant="white" showText={true} href="/" />
+            </div>
+            <div className="text-gray-400 text-sm text-center md:text-right">
+              <p>© 2025 Warungpedia. All rights reserved.</p>
+              <p className="mt-1">
+                Butuh bantuan?{" "}
+                <a
+                  href="mailto:support@warungpedia.id"
+                  className="text-[#0779FF] hover:underline"
+                >
+                  support@warungpedia.id
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

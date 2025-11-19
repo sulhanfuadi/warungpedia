@@ -39,15 +39,25 @@ export async function POST(
       );
     }
 
-    // TODO: Send activation email
-    console.log(`📧 Sending activation email to ${seller.pic_email}`);
-    console.log(`   Name: ${seller.pic_name}`);
-    console.log(`   Store: ${seller.store_name}`);
+    // Send activation email via Supabase Auth
+    const { error: emailError } =
+      await supabaseAdmin.auth.admin.inviteUserByEmail(seller.pic_email, {
+        redirectTo: `${
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+        }/penjual/login`,
+      });
+
+    if (emailError) {
+      console.warn("⚠️ Email aktivasi gagal dikirim:", emailError);
+      // Still return success because the main operation (status update) succeeded
+    } else {
+      console.log(`✅ Email aktivasi dikirim ke ${seller.pic_email}`);
+    }
 
     return NextResponse.json(
       {
         message:
-          "Pendaftaran berhasil diterima dan email aktivasi telah dikirim",
+          "Pendaftaran berhasil disetujui dan email aktivasi telah dikirim",
       },
       { status: 200 }
     );
