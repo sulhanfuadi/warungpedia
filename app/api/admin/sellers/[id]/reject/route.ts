@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendRejectionEmail } from "@/lib/services/emailService";
 
 export async function POST(
   request: NextRequest,
@@ -48,11 +49,26 @@ export async function POST(
       );
     }
 
-    // TODO: Send rejection email
-    console.log(`📧 Sending rejection email to ${seller.pic_email}`);
-    console.log(`   Name: ${seller.pic_name}`);
-    console.log(`   Store: ${seller.store_name}`);
-    console.log(`   Reason: ${reason}`);
+    // Send rejection email
+    const emailResult = await sendRejectionEmail(
+      seller.pic_email,
+      seller.pic_name,
+      seller.store_name,
+      reason
+    );
+
+    if (!emailResult.success) {
+      console.warn("⚠️ Email penolakan gagal dikirim:", emailResult.error);
+      // Still return success because status update succeeded
+      return NextResponse.json(
+        {
+          message:
+            "Pendaftaran berhasil ditolak, namun email penolakan gagal dikirim",
+          warning: "Email delivery failed",
+        },
+        { status: 200 }
+      );
+    }
 
     return NextResponse.json(
       {
