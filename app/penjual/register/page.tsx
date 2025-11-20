@@ -3,6 +3,7 @@
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { testSupabaseConnection } from "@/lib/testSupabase";
 import Logo from "@/components/ui/Logo";
+import Link from "next/dist/client/link";
 
 interface PasswordStrength {
   hasMinLength: boolean;
@@ -447,6 +448,17 @@ export default function RegisterPage() {
                     >
                       Lanjut ke Data Toko →
                     </button>
+                    <div className="mt-6 text-center">
+                      <p className="text-gray-400 text-sm">
+                        Sudah punya akun?{" "}
+                        <Link
+                          href="/login" // ✅ Ganti dari /penjual/login jadi /login
+                          className="text-[#0779FF] hover:underline font-semibold"
+                        >
+                          Login Sekarang
+                        </Link>
+                      </p>
+                    </div>
                   </div>
                 )}
 

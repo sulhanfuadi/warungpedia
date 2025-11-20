@@ -250,6 +250,7 @@ export async function POST(request: NextRequest) {
       store_description: formData.get("storeDescription") || null,
       pic_name: formData.get("picName"),
       pic_phone: formData.get("picPhone"),
+      pic_email: picEmail, // ✅ Tambahkan ini
       pic_street: formData.get("picStreet"),
       pic_rt: formData.get("picRT"),
       pic_rw: formData.get("picRW"),
@@ -260,6 +261,7 @@ export async function POST(request: NextRequest) {
       pic_photo_path: picPhotoPath,
       pic_ktp_file_path: picKtpFilePath,
       status: "PENDING",
+      role: "seller", // ✅ Tambahkan ini
     });
 
     if (dbError) {

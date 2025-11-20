@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Logo from "@/components/ui/Logo";
 import Link from "next/link";
 
-export default function SellerLoginPage() {
+export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,9 +19,10 @@ export default function SellerLoginPage() {
     setError("");
 
     try {
-      console.log("=== DEBUG SELLER LOGIN ===");
+      console.log("=== DEBUG UNIFIED LOGIN ===");
       console.log("Email:", email);
 
+      // 1. Login via Supabase Auth
       const { data: authData, error: authError } =
         await supabase.auth.signInWithPassword({
           email,
@@ -39,7 +40,7 @@ export default function SellerLoginPage() {
         throw new Error("Login gagal. User tidak ditemukan.");
       }
 
-      // ✅ Check role di tabel sellers
+      // 2. Check role di tabel sellers
       const { data: seller, error: sellerError } = await supabase
         .from("sellers")
         .select("role, status")
@@ -49,23 +50,29 @@ export default function SellerLoginPage() {
       console.log("Seller Data:", seller);
       console.log("Seller Error:", sellerError);
 
-      if (sellerError || !seller || seller.role !== "seller") {
+      if (sellerError || !seller) {
         await supabase.auth.signOut();
-        throw new Error(
-          "Akses ditolak. Email ini tidak terdaftar sebagai penjual. " +
-            "Jika Anda admin, silakan login di /admin/login"
-        );
+        throw new Error("Akun tidak ditemukan di sistem.");
       }
 
-      if (seller.status !== "ACTIVE") {
+      // 3. Redirect berdasarkan role
+      if (seller.role === "admin") {
+        console.log("✅ Admin detected! Redirecting to /admin/sellers");
+        router.push("/admin/sellers");
+      } else if (seller.role === "seller") {
+        // Check status untuk seller
+        if (seller.status !== "ACTIVE") {
+          await supabase.auth.signOut();
+          throw new Error(
+            `Akun Anda berstatus ${seller.status}. Silakan hubungi admin.`
+          );
+        }
+        console.log("✅ Seller detected! Redirecting to /penjual/dashboard");
+        router.push("/penjual/dashboard");
+      } else {
         await supabase.auth.signOut();
-        throw new Error(
-          `Akun Anda berstatus ${seller.status}. Silakan hubungi admin.`
-        );
+        throw new Error("Role tidak valid.");
       }
-
-      console.log("✅ Seller login success! Redirecting...");
-      router.push("/penjual/dashboard");
     } catch (err) {
       console.error("❌ Login error:", err);
       setError(err instanceof Error ? err.message : "Login gagal");
@@ -81,11 +88,9 @@ export default function SellerLoginPage() {
         <div className="text-center mb-8">
           <Logo size="xl" variant="white" showText={true} href="/" />
           <h1 className="text-3xl font-bold text-white mt-6 mb-2">
-            Login Penjual
+            Login Warungpedia
           </h1>
-          <p className="text-gray-400">
-            Akses dashboard toko Anda di Warungpedia
-          </p>
+          <p className="text-gray-400">Masuk ke dashboard Anda</p>
         </div>
 
         {/* Login Card */}
@@ -164,13 +169,27 @@ export default function SellerLoginPage() {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              Belum punya akun?{" "}
+              Belum punya akun penjual?{" "}
               <Link
                 href="/penjual/register"
                 className="text-[#0779FF] hover:underline font-semibold"
               >
                 Daftar Sekarang
               </Link>
+            </p>
+          </div>
+
+          {/* Info Demo Account */}
+          <div className="mt-6 p-4 bg-[#1a1a1a] rounded-lg border border-[#3a3a3a]">
+            <p className="text-sm text-gray-400 mb-2">
+              <strong className="text-white">Demo Account Admin:</strong>
+            </p>
+            <p className="text-sm text-gray-400">
+              Email:{" "}
+              <span className="text-[#0779FF]">admin@warungpedia.id</span>
+            </p>
+            <p className="text-sm text-gray-400">
+              Password: <span className="text-[#0779FF]">Admin123!</span>
             </p>
           </div>
         </div>

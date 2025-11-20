@@ -62,20 +62,19 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // === ADMIN ROUTES ===
-  if (path.startsWith("/admin") && path !== "/admin/login") {
+  if (path.startsWith("/admin")) {
     if (!session) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
     }
 
-    // Check if user is admin
-    const { data: adminData } = await supabase
-      .from("admins")
-      .select("id")
+    const { data: seller } = await supabase
+      .from("sellers")
+      .select("role")
       .eq("id", session.user.id)
       .single();
 
-    if (!adminData) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+    if (!seller || seller.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
     }
   }
 
@@ -85,23 +84,22 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/penjual/produk")
   ) {
     if (!session) {
-      return NextResponse.redirect(new URL("/penjual/login", request.url));
+      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
     }
 
-    // Check if user is seller
-    const { data: sellerData } = await supabase
+    const { data: seller } = await supabase
       .from("sellers")
-      .select("id, status")
+      .select("role, status")
       .eq("id", session.user.id)
       .single();
 
-    if (!sellerData) {
-      return NextResponse.redirect(new URL("/penjual/login", request.url));
+    if (!seller || seller.role !== "seller") {
+      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
     }
 
-    if (sellerData.status !== "ACTIVE") {
+    if (seller.status !== "ACTIVE") {
       return NextResponse.redirect(
-        new URL("/penjual/login?error=inactive", request.url)
+        new URL("/login?error=inactive", request.url)
       );
     }
   }
@@ -112,13 +110,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: adminData } = await supabase
-      .from("admins")
-      .select("id")
+    const { data: seller } = await supabase
+      .from("sellers")
+      .select("role")
       .eq("id", session.user.id)
       .single();
 
-    if (!adminData) {
+    if (!seller || seller.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
