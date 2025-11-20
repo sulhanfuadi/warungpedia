@@ -4,13 +4,17 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") || "PENDING";
+    const status = searchParams.get("status"); // PENDING, ACTIVE, INACTIVE, REJECTED, atau ALL
 
-    const { data: sellers, error } = await supabaseAdmin
-      .from("sellers")
-      .select("*")
-      .eq("status", status)
-      .order("created_at", { ascending: false });
+    let query = supabaseAdmin.from("sellers").select("*");
+
+    if (status && status !== "ALL") {
+      query = query.eq("status", status);
+    }
+
+    const { data: sellers, error } = await query.order("created_at", {
+      ascending: false,
+    });
 
     if (error) {
       console.error("Database error:", error);
