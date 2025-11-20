@@ -4,10 +4,11 @@ import { sendRejectionEmail } from "@/lib/services/emailService";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const sellerId = params.id;
+    // ✅ AWAIT params dulu!
+    const { id: sellerId } = await context.params;
     const body = await request.json();
     const { reason } = body;
 

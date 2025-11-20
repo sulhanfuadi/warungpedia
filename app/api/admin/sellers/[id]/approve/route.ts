@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendApprovalEmail } from "@/lib/services/emailService";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const sellerId = params.id;
+    // ✅ AWAIT params dulu!
+    const { id: sellerId } = await context.params;
+
+    // 🔍 Debug logging
+    console.log("=== DEBUG APPROVE API ===");
+    console.log("Seller ID:", sellerId);
 
     // Get seller data
     const { data: seller, error: fetchError } = await supabaseAdmin
@@ -15,9 +21,14 @@ export async function POST(
       .eq("id", sellerId)
       .single();
 
+    // 🔍 Debug logging
+    console.log("Fetch Error:", fetchError);
+    console.log("Seller Data:", seller);
+
     if (fetchError || !seller) {
+      console.error("❌ Seller not found - fetchError:", fetchError);
       return NextResponse.json(
-        { error: "Penjual tidak ditemukan" },
+        { error: "Penjual tidak ditemukan", details: fetchError },
         { status: 404 }
       );
     }
@@ -39,20 +50,53 @@ export async function POST(
       );
     }
 
-    // Send activation email via Supabase Auth
-    const { error: emailError } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(seller.pic_email, {
-        redirectTo: `${
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-        }/penjual/login`,
+    // Generate magic link untuk aktivasi akun (via Supabase Auth)
+    const { data: linkData, error: linkError } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email: seller.pic_email,
+        options: {
+          redirectTo: `${
+            process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+          }/penjual/dashboard`,
+        },
       });
 
-    if (emailError) {
-      console.warn("⚠️ Email aktivasi gagal dikirim:", emailError);
-      // Still return success because the main operation (status update) succeeded
-    } else {
-      console.log(`✅ Email aktivasi dikirim ke ${seller.pic_email}`);
+    if (linkError) {
+      console.error("❌ Failed to generate magic link:", linkError);
+      return NextResponse.json(
+        {
+          message:
+            "Pendaftaran berhasil disetujui, namun gagal generate link aktivasi",
+          warning: "Link generation failed",
+        },
+        { status: 200 }
+      );
     }
+
+    const activationLink = linkData?.properties?.action_link || "";
+
+    // Send approval email dengan link aktivasi
+    const emailResult = await sendApprovalEmail(
+      seller.pic_email,
+      seller.pic_name,
+      seller.store_name,
+      activationLink
+    );
+
+    if (!emailResult.success) {
+      console.warn("⚠️ Email aktivasi gagal dikirim:", emailResult.error);
+      return NextResponse.json(
+        {
+          message:
+            "Pendaftaran berhasil disetujui, namun email aktivasi gagal dikirim",
+          warning: "Email delivery failed",
+        },
+        { status: 200 }
+      );
+    }
+
+    console.log(`✅ Approval email sent to ${seller.pic_email}`);
 
     return NextResponse.json(
       {
@@ -64,7 +108,7 @@ export async function POST(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Terjadi kesalahan server" },
+      { error: "Terjadi kesalahan server", details: error },
       { status: 500 }
     );
   }
