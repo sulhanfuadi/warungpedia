@@ -11,6 +11,11 @@ export async function POST(
     const body = await request.json();
     const { reason } = body;
 
+    // 🔍 Debug logging
+    console.log("=== DEBUG REJECT API ===");
+    console.log("Seller ID:", sellerId);
+    console.log("Reason:", reason);
+
     if (!reason || !reason.trim()) {
       return NextResponse.json(
         { error: "Alasan penolakan harus diisi" },
@@ -25,9 +30,14 @@ export async function POST(
       .eq("id", sellerId)
       .single();
 
+    // 🔍 Debug logging
+    console.log("Fetch Error:", fetchError);
+    console.log("Seller Data:", seller);
+
     if (fetchError || !seller) {
+      console.error("❌ Seller not found - fetchError:", fetchError);
       return NextResponse.json(
-        { error: "Penjual tidak ditemukan" },
+        { error: "Penjual tidak ditemukan", details: fetchError },
         { status: 404 }
       );
     }
@@ -59,7 +69,6 @@ export async function POST(
 
     if (!emailResult.success) {
       console.warn("⚠️ Email penolakan gagal dikirim:", emailResult.error);
-      // Still return success because status update succeeded
       return NextResponse.json(
         {
           message:
@@ -80,7 +89,7 @@ export async function POST(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Terjadi kesalahan server" },
+      { error: "Terjadi kesalahan server", details: error },
       { status: 500 }
     );
   }
