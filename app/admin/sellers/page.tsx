@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Logo from "@/components/ui/Logo";
 
@@ -31,6 +33,7 @@ export default function AdminSellersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     fetchPendingSellers();
@@ -47,6 +50,13 @@ export default function AdminSellersPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    if (!confirm("Yakin ingin logout?")) return;
+
+    await supabase.auth.signOut();
+    router.push("/admin/login");
   };
 
   const handleShowDetail = (seller: Seller) => {
@@ -152,6 +162,14 @@ export default function AdminSellersPage() {
                 </p>
               </div>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
