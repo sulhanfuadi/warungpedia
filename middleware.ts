@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // ✅ Skip middleware untuk route login
+  if (path === "/login" || path === "/penjual/register") {
+    console.log("⏭️ Skipping middleware for:", path);
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -59,23 +67,34 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const path = request.nextUrl.pathname;
+  console.log("🔐 Middleware triggered for:", path);
+  console.log("Session exists:", !!session);
 
   // === ADMIN ROUTES ===
   if (path.startsWith("/admin")) {
+    console.log("🎯 Checking admin route access");
+
     if (!session) {
-      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
+      console.log("❌ No session, redirecting to /login");
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const { data: seller } = await supabase
+    // ✅ Check role di tabel sellers
+    const { data: seller, error: sellerError } = await supabase
       .from("sellers")
       .select("role")
       .eq("id", session.user.id)
       .single();
 
-    if (!seller || seller.role !== "admin") {
-      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
+    console.log("Seller Data in Middleware:", seller);
+    console.log("Seller Error in Middleware:", sellerError);
+
+    if (sellerError || !seller || seller.role !== "admin") {
+      console.log("❌ Not admin or error, redirecting to /login");
+      return NextResponse.redirect(new URL("/login", request.url));
     }
+
+    console.log("✅ Admin access granted");
   }
 
   // === SELLER ROUTES ===
@@ -83,25 +102,35 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/penjual/dashboard") ||
     path.startsWith("/penjual/produk")
   ) {
+    console.log("🎯 Checking seller route access");
+
     if (!session) {
-      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
+      console.log("❌ No session, redirecting to /login");
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const { data: seller } = await supabase
+    const { data: seller, error: sellerError } = await supabase
       .from("sellers")
       .select("role, status")
       .eq("id", session.user.id)
       .single();
 
-    if (!seller || seller.role !== "seller") {
-      return NextResponse.redirect(new URL("/login", request.url)); // ✅ Ganti jadi /login
+    console.log("Seller Data in Middleware:", seller);
+    console.log("Seller Error in Middleware:", sellerError);
+
+    if (sellerError || !seller || seller.role !== "seller") {
+      console.log("❌ Not seller or error, redirecting to /login");
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
     if (seller.status !== "ACTIVE") {
+      console.log("❌ Seller not active, redirecting to /login");
       return NextResponse.redirect(
         new URL("/login?error=inactive", request.url)
       );
     }
+
+    console.log("✅ Seller access granted");
   }
 
   // === API ROUTES ===

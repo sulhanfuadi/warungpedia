@@ -58,7 +58,10 @@ export default function LoginPage() {
       // 3. Redirect berdasarkan role
       if (seller.role === "admin") {
         console.log("✅ Admin detected! Redirecting to /admin/sellers");
-        router.push("/admin/sellers");
+
+        // ✅ HAPUS setTimeout dan router.push, PAKAI window.location
+        window.location.href = "/admin/sellers"; // Force hard redirect
+        return; // Stop execution
       } else if (seller.role === "seller") {
         // Check status untuk seller
         if (seller.status !== "ACTIVE") {
@@ -68,7 +71,10 @@ export default function LoginPage() {
           );
         }
         console.log("✅ Seller detected! Redirecting to /penjual/dashboard");
-        router.push("/penjual/dashboard");
+
+        // ✅ PAKAI window.location juga
+        window.location.href = "/penjual/dashboard";
+        return;
       } else {
         await supabase.auth.signOut();
         throw new Error("Role tidak valid.");
@@ -113,6 +119,7 @@ export default function LoginPage() {
                 required
                 className="w-full p-4 bg-[#1a1a1a] border-2 border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent transition-all"
                 placeholder="email@contoh.com"
+                suppressHydrationWarning
               />
             </div>
 
@@ -128,6 +135,7 @@ export default function LoginPage() {
                 required
                 className="w-full p-4 bg-[#1a1a1a] border-2 border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent transition-all"
                 placeholder="Masukkan password"
+                suppressHydrationWarning
               />
             </div>
 
@@ -136,6 +144,7 @@ export default function LoginPage() {
               type="submit"
               disabled={isLoading}
               className="w-full bg-[#0779FF] hover:bg-[#0669dd] text-white px-8 py-4 rounded-lg font-semibold transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:bg-gray-600 disabled:cursor-not-allowed"
+              suppressHydrationWarning
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
