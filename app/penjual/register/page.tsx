@@ -28,6 +28,7 @@ export default function RegisterPage() {
     picRT: "",
     picRW: "",
     picVillage: "",
+    picDistrict: "",
     picCity: "",
     picProvince: "",
     picKtpNumber: "",
@@ -561,6 +562,7 @@ export default function RegisterPage() {
                             placeholder="Nama jalan dan nomor rumah"
                           />
                         </div>
+
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block mb-2 font-medium text-white">
@@ -591,6 +593,7 @@ export default function RegisterPage() {
                             />
                           </div>
                         </div>
+
                         <div>
                           <label className="block mb-2 font-medium text-white">
                             Kelurahan*
@@ -602,8 +605,25 @@ export default function RegisterPage() {
                             onChange={handleChange}
                             required
                             className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
+                            placeholder="Nama kelurahan"
                           />
                         </div>
+
+                        <div>
+                          <label className="block mb-2 font-medium text-white">
+                            Kecamatan*
+                          </label>
+                          <input
+                            type="text"
+                            name="picDistrict"
+                            value={formData.picDistrict}
+                            onChange={handleChange}
+                            required
+                            className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
+                            placeholder="Nama kecamatan"
+                          />
+                        </div>
+
                         <div>
                           <label className="block mb-2 font-medium text-white">
                             Kab/Kota*
@@ -615,8 +635,10 @@ export default function RegisterPage() {
                             onChange={handleChange}
                             required
                             className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
+                            placeholder="Nama kota/kabupaten"
                           />
                         </div>
+
                         <div>
                           <label className="block mb-2 font-medium text-white">
                             Provinsi*
@@ -628,11 +650,11 @@ export default function RegisterPage() {
                             onChange={handleChange}
                             required
                             className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
+                            placeholder="Nama provinsi"
                           />
                         </div>
                       </div>
                     </fieldset>
-
                     {/* Dokumen Legalitas */}
                     <fieldset className="border border-[#3a3a3a] p-6 rounded-lg bg-[#1a1a1a]">
                       <legend className="font-bold text-lg px-3 text-white">
