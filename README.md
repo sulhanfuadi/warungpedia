@@ -250,3 +250,10 @@ Untuk pertanyaan atau feedback:
 ---
 
 **Made with ❤️ for Mata Kuliah Proyek Perangkat Lunak**
+
+## Fitur SRS 03-05
+
+- **SRS-MartPlace-03**: Upload produk oleh penjual (foto utama, galeri, varian dengan harga/stok, spesifikasi dinamis) mengacu flow UI marketplace.
+- **SRS-MartPlace-04**: Katalog publik (tanpa login) beserta halaman detail produk, menampilkan rating rata-rata dan komentar (placeholder).
+- **SRS-MartPlace-05**: Pencarian produk via filter nama produk, nama toko, kategori, dan lokasi (kota/provinsi) di halaman beranda.
+

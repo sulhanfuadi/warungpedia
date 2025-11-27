@@ -51,7 +51,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
   console.log("─".repeat(60));
 
   try {
-    const {
+    const {``
       data: { session },
       error,
     } = await supabase.auth.getSession();

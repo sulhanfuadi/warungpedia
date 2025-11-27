@@ -25,7 +25,6 @@ const CONDITION_OPTIONS: Condition[] = ["BARU", "BEKAS"];
 
 export default function UploadProdukPage() {
   const [sellerId, setSellerId] = useState<string | null>(null);
-  const [manualSellerId, setManualSellerId] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -47,6 +46,19 @@ export default function UploadProdukPage() {
       .getUser()
       .then(({ data }) => setSellerId(data.user?.id ?? null))
       .catch(() => setSellerId(null));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        setSellerId(session?.user?.id ?? null);
+      }
+      if (event === "SIGNED_OUT") {
+        setSellerId(null);
+      }
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   const specsObject = useMemo(() => {
@@ -113,8 +125,7 @@ export default function UploadProdukPage() {
   };
 
   const validate = () => {
-    const effectiveSeller = sellerId || manualSellerId.trim();
-    if (!effectiveSeller) return "Seller ID wajib diisi (login atau isi manual).";
+    if (!sellerId) return "Silakan login sebagai penjual terlebih dahulu.";
     if (!name.trim()) return "Nama produk wajib diisi.";
     if (!category.trim()) return "Kategori wajib diisi.";
     if (!price || Number(price) < 0) return "Harga tidak valid.";
@@ -150,8 +161,7 @@ export default function UploadProdukPage() {
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      const effectiveSeller = sellerId || manualSellerId.trim();
-      formData.append("sellerId", effectiveSeller as string);
+      formData.append("sellerId", sellerId as string);
       formData.append("name", name);
       formData.append("category", category);
       if (description) formData.append("description", description);
@@ -295,20 +305,6 @@ export default function UploadProdukPage() {
             </div>
 
             <div className="space-y-5">
-              {!sellerId && (
-                <div className="space-y-2">
-                  <label className="text-sm text-gray-300">
-                    Seller ID (jika belum login)*
-                  </label>
-                  <input
-                    value={manualSellerId}
-                    onChange={(e) => setManualSellerId(e.target.value)}
-                    className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-4 py-3 text-white focus:border-[#0779FF] focus:outline-none"
-                    placeholder="UUID seller"
-                  />
-                </div>
-              )}
-
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm text-gray-300">Nama Produk*</label>
