@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Seller {
   id: string;
@@ -14,13 +16,57 @@ interface Seller {
 }
 
 export default function ManageSellersPage() {
+  const router = useRouter();
   const [sellers, setSellers] = useState<Seller[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+const [isLoading, setIsLoading] = useState(true);
+const [authChecking, setAuthChecking] = useState(true);
+const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
+  const adminEmails = [
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+  ];
+
+  const inferRole = (session: unknown): string | undefined => {
+    if (!session || typeof session !== "object") return undefined;
+    const s = session as { user?: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown>; email?: string } };
+    const metaRole =
+      (s.user?.user_metadata?.role as string | undefined) ||
+      (s.user?.app_metadata?.role as string | undefined);
+    if (metaRole) return metaRole;
+    const email = s.user?.email;
+    if (email && adminEmails.includes(email)) return "admin";
+    return undefined;
+  };
 
   useEffect(() => {
-    fetchSellers();
-  }, [filter]);
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      const role = inferRole(data.session);
+      if (!data.session || role !== "admin") {
+        router.replace("/admin/login");
+        return;
+      }
+      if (active) {
+        setAuthChecking(false);
+        fetchSellers();
+      }
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      const role =
+        (session?.user.user_metadata as Record<string, unknown>)?.role ||
+        (session?.user.app_metadata as Record<string, unknown>)?.role;
+      if (event === "SIGNED_OUT" || !session || role !== "admin") {
+        router.replace("/admin/login");
+      }
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription.unsubscribe();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchSellers = async () => {
     try {
@@ -71,7 +117,14 @@ export default function ManageSellersPage() {
     }
   };
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!authChecking) {
+      fetchSellers();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, authChecking]);
+
+  if (authChecking || isLoading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-center">

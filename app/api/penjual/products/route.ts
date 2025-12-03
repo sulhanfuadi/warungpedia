@@ -11,6 +11,14 @@ function parseNumber(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getBearerToken(req: NextRequest): string | null {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return null;
+  const [scheme, token] = authHeader.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || !token) return null;
+  return token.trim();
+}
+
 type IncomingVariant = {
   option_group: string;
   name: string;
@@ -24,9 +32,57 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
-    const sellerId =
-      (formData.get("sellerId") as string | null) ||
-      request.headers.get("x-seller-id");
+    const token = getBearerToken(request);
+    if (!token) {
+      return NextResponse.json(
+        { error: "Unauthorized: token tidak ditemukan" },
+        { status: 401 },
+      );
+    }
+
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.getUser(
+      token,
+    );
+    if (authError || !authUser?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized: token tidak valid" },
+        { status: 401 },
+      );
+    }
+
+    const sellerId = authUser.user.id;
+    const { data: sellerRecord, error: sellerError } = await supabaseAdmin
+      .from("sellers")
+      .select("status, role")
+      .eq("id", sellerId)
+      .single();
+
+    if (sellerError || !sellerRecord) {
+      return NextResponse.json(
+        { error: "Seller tidak ditemukan" },
+        { status: 403 },
+      );
+    }
+
+    const role =
+      (authUser.user.user_metadata as Record<string, unknown>)?.role ||
+      (authUser.user.app_metadata as Record<string, unknown>)?.role ||
+      sellerRecord.role;
+
+    if (role && role !== "seller") {
+      return NextResponse.json(
+        { error: "Akun ini bukan seller" },
+        { status: 403 },
+      );
+    }
+
+    if (sellerRecord.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "Akun seller belum aktif atau disuspend" },
+        { status: 403 },
+      );
+    }
+
     const name = formData.get("name");
     const category = formData.get("category");
     const description = formData.get("description");

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -24,6 +25,7 @@ interface VariantRow {
 const CONDITION_OPTIONS: Condition[] = ["BARU", "BEKAS"];
 
 export default function UploadProdukPage() {
+  const router = useRouter();
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -42,24 +44,59 @@ export default function UploadProdukPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     supabase.auth
-      .getUser()
-      .then(({ data }) => setSellerId(data.user?.id ?? null))
-      .catch(() => setSellerId(null));
+      .getSession()
+      .then(({ data }) => {
+        const role =
+          (data.session?.user.user_metadata as Record<string, unknown>)?.role ||
+          (data.session?.user.app_metadata as Record<string, unknown>)?.role;
+        const email = data.session?.user.email;
+        const adminEmails = [
+          process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+        ];
+        if (!data.session) {
+          router.replace("/penjual/login");
+          return;
+        }
+        if (role === "admin" || (email && adminEmails.includes(email))) {
+          supabase.auth.signOut();
+          router.replace("/penjual/login");
+          return;
+        }
+        if (active) setSellerId(data.session.user?.id ?? null);
+      })
+      .catch(() => {
+        if (active) router.replace("/penjual/login");
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      const role =
+        (session?.user.user_metadata as Record<string, unknown>)?.role ||
+        (session?.user.app_metadata as Record<string, unknown>)?.role;
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        const email = session?.user.email;
+        const adminEmails = [
+          process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+        ];
+        if (role === "admin" || (email && adminEmails.includes(email))) {
+          supabase.auth.signOut();
+          router.replace("/penjual/login");
+          return;
+        }
         setSellerId(session?.user?.id ?? null);
       }
       if (event === "SIGNED_OUT") {
         setSellerId(null);
+        router.replace("/penjual/login");
       }
     });
 
     return () => {
+      active = false;
       listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   const specsObject = useMemo(() => {
     const cleaned = specs
@@ -160,6 +197,17 @@ export default function UploadProdukPage() {
 
     setIsSubmitting(true);
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        setError("Silakan login sebagai seller untuk mengunggah produk.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append("sellerId", sellerId as string);
       formData.append("name", name);
@@ -205,6 +253,9 @@ export default function UploadProdukPage() {
       const res = await fetch("/api/penjual/products", {
         method: "POST",
         body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json();
@@ -237,9 +288,18 @@ export default function UploadProdukPage() {
       <header className="border-b border-[#2f2f2f] bg-[#121212]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Logo size="lg" variant="white" showText href="/" />
-          <span className="text-sm text-gray-400">
-            Upload Produk
-          </span>
+          <div className="flex items-center gap-3 text-sm text-gray-400">
+            <span>Upload Produk</span>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.replace("/penjual/login");
+              }}
+              className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-red-500 hover:text-red-300"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
