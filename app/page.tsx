@@ -69,8 +69,16 @@ export default function HomePage() {
       <header className="border-b border-[#2f2f2f] bg-[#121212]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Logo size="md" variant="white" showText href="/" />
-          <div className="text-sm text-gray-400">
-            Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau lokasi
+          <div className="flex items-center gap-4 text-sm text-gray-400">
+            <span>
+              Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau lokasi
+            </span>
+            <Link
+              href="/penjual/login"
+              className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-[#0779FF] hover:text-[#0779FF]"
+            >
+              Login Penjual
+            </Link>
           </div>
         </div>
       </header>

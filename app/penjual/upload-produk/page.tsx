@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -24,8 +25,8 @@ interface VariantRow {
 const CONDITION_OPTIONS: Condition[] = ["BARU", "BEKAS"];
 
 export default function UploadProdukPage() {
+  const router = useRouter();
   const [sellerId, setSellerId] = useState<string | null>(null);
-  const [manualSellerId, setManualSellerId] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -43,11 +44,59 @@ export default function UploadProdukPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     supabase.auth
-      .getUser()
-      .then(({ data }) => setSellerId(data.user?.id ?? null))
-      .catch(() => setSellerId(null));
-  }, []);
+      .getSession()
+      .then(({ data }) => {
+        const role =
+          (data.session?.user.user_metadata as Record<string, unknown>)?.role ||
+          (data.session?.user.app_metadata as Record<string, unknown>)?.role;
+        const email = data.session?.user.email;
+        const adminEmails = [
+          process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+        ];
+        if (!data.session) {
+          router.replace("/penjual/login");
+          return;
+        }
+        if (role === "admin" || (email && adminEmails.includes(email))) {
+          supabase.auth.signOut();
+          router.replace("/penjual/login");
+          return;
+        }
+        if (active) setSellerId(data.session.user?.id ?? null);
+      })
+      .catch(() => {
+        if (active) router.replace("/penjual/login");
+      });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      const role =
+        (session?.user.user_metadata as Record<string, unknown>)?.role ||
+        (session?.user.app_metadata as Record<string, unknown>)?.role;
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        const email = session?.user.email;
+        const adminEmails = [
+          process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+        ];
+        if (role === "admin" || (email && adminEmails.includes(email))) {
+          supabase.auth.signOut();
+          router.replace("/penjual/login");
+          return;
+        }
+        setSellerId(session?.user?.id ?? null);
+      }
+      if (event === "SIGNED_OUT") {
+        setSellerId(null);
+        router.replace("/penjual/login");
+      }
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription.unsubscribe();
+    };
+  }, [router]);
 
   const specsObject = useMemo(() => {
     const cleaned = specs
@@ -71,17 +120,10 @@ export default function UploadProdukPage() {
     setGalleryPreview(asArray.map((f) => URL.createObjectURL(f)));
   };
 
-  const handleAddSpec = () =>
-    setSpecs((prev) => [...prev, { key: "", value: "" }]);
+  const handleAddSpec = () => setSpecs((prev) => [...prev, { key: "", value: "" }]);
 
-  const handleSpecChange = (
-    idx: number,
-    field: "key" | "value",
-    value: string
-  ) => {
-    setSpecs((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
-    );
+  const handleSpecChange = (idx: number, field: "key" | "value", value: string) => {
+    setSpecs((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
   };
 
   const handleRemoveSpec = (idx: number) => {
@@ -91,10 +133,10 @@ export default function UploadProdukPage() {
   const handleVariantChange = (
     idx: number,
     field: keyof Omit<VariantRow, "image" | "preview">,
-    value: string
+    value: string,
   ) => {
     setVariants((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v))
+      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)),
     );
   };
 
@@ -102,27 +144,16 @@ export default function UploadProdukPage() {
     setVariants((prev) =>
       prev.map((v, i) =>
         i === idx
-          ? {
-              ...v,
-              image: file,
-              preview: file ? URL.createObjectURL(file) : null,
-            }
-          : v
-      )
+          ? { ...v, image: file, preview: file ? URL.createObjectURL(file) : null }
+          : v,
+      ),
     );
   };
 
   const handleAddVariant = () => {
     setVariants((prev) => [
       ...prev,
-      {
-        optionGroup: prev[0]?.optionGroup || "opsi",
-        name: "",
-        price: "",
-        stock: "0",
-        image: null,
-        preview: null,
-      },
+      { optionGroup: prev[0]?.optionGroup || "opsi", name: "", price: "", stock: "0", image: null, preview: null },
     ]);
   };
 
@@ -131,9 +162,7 @@ export default function UploadProdukPage() {
   };
 
   const validate = () => {
-    const effectiveSeller = sellerId || manualSellerId.trim();
-    if (!effectiveSeller)
-      return "Seller ID wajib diisi (login atau isi manual).";
+    if (!sellerId) return "Silakan login sebagai penjual terlebih dahulu.";
     if (!name.trim()) return "Nama produk wajib diisi.";
     if (!category.trim()) return "Kategori wajib diisi.";
     if (!price || Number(price) < 0) return "Harga tidak valid.";
@@ -145,15 +174,14 @@ export default function UploadProdukPage() {
         v.name.trim() ||
         v.price.trim() ||
         v.stock.trim() ||
-        v.image
+        v.image,
     );
     for (const v of activeVariants) {
       if (!v.optionGroup.trim() || !v.name.trim()) {
         return "Setiap varian yang diisi perlu option group dan nama.";
       }
       if (v.price && Number(v.price) < 0) return "Harga varian tidak valid.";
-      if (v.stock && Number.isNaN(Number(v.stock)))
-        return "Stok varian tidak valid.";
+      if (v.stock && Number.isNaN(Number(v.stock))) return "Stok varian tidak valid.";
     }
     return null;
   };
@@ -169,9 +197,19 @@ export default function UploadProdukPage() {
 
     setIsSubmitting(true);
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        setError("Silakan login sebagai seller untuk mengunggah produk.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
-      const effectiveSeller = sellerId || manualSellerId.trim();
-      formData.append("sellerId", effectiveSeller as string);
+      formData.append("sellerId", sellerId as string);
       formData.append("name", name);
       formData.append("category", category);
       if (description) formData.append("description", description);
@@ -194,7 +232,7 @@ export default function UploadProdukPage() {
           v.name.trim() ||
           v.price.trim() ||
           v.stock.trim() ||
-          v.image
+          v.image,
       );
       const variantsPayload = activeVariants.map((v, idx) => ({
         option_group: v.optionGroup,
@@ -215,6 +253,9 @@ export default function UploadProdukPage() {
       const res = await fetch("/api/penjual/products", {
         method: "POST",
         body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json();
@@ -247,7 +288,18 @@ export default function UploadProdukPage() {
       <header className="border-b border-[#2f2f2f] bg-[#121212]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Logo size="lg" variant="white" showText href="/" />
-          <span className="text-sm text-gray-400">Upload Produk</span>
+          <div className="flex items-center gap-3 text-sm text-gray-400">
+            <span>Upload Produk</span>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.replace("/penjual/login");
+              }}
+              className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-red-500 hover:text-red-300"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -298,11 +350,7 @@ export default function UploadProdukPage() {
                 <p className="font-semibold text-white">Nama Produk</p>
                 <p>{name || "Belum diisi"}</p>
                 <p className="font-semibold text-white">Harga</p>
-                <p>
-                  {price
-                    ? `Rp${Number(price).toLocaleString("id-ID")}`
-                    : "Belum diisi"}
-                </p>
+                <p>{price ? `Rp${Number(price).toLocaleString("id-ID")}` : "Belum diisi"}</p>
                 <p className="font-semibold text-white">Kondisi</p>
                 <p>{condition === "BARU" ? "Baru" : "Bekas"}</p>
               </div>
@@ -317,20 +365,6 @@ export default function UploadProdukPage() {
             </div>
 
             <div className="space-y-5">
-              {!sellerId && (
-                <div className="space-y-2">
-                  <label className="text-sm text-gray-300">
-                    Seller ID (jika belum login)*
-                  </label>
-                  <input
-                    value={manualSellerId}
-                    onChange={(e) => setManualSellerId(e.target.value)}
-                    className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-4 py-3 text-white focus:border-[#0779FF] focus:outline-none"
-                    placeholder="UUID seller"
-                  />
-                </div>
-              )}
-
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm text-gray-300">Nama Produk*</label>
@@ -411,7 +445,7 @@ export default function UploadProdukPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm text-gray-300">Spesifikasi</label>
+                    <label className="text-sm text-gray-300">Spesifikasi (JSON)</label>
                   </div>
                   <button
                     type="button"
@@ -426,17 +460,13 @@ export default function UploadProdukPage() {
                     <div key={idx} className="flex gap-3">
                       <input
                         value={row.key}
-                        onChange={(e) =>
-                          handleSpecChange(idx, "key", e.target.value)
-                        }
+                        onChange={(e) => handleSpecChange(idx, "key", e.target.value)}
                         placeholder="Kunci (contoh: Berat)"
                         className="w-1/2 rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                       />
                       <input
                         value={row.value}
-                        onChange={(e) =>
-                          handleSpecChange(idx, "value", e.target.value)
-                        }
+                        onChange={(e) => handleSpecChange(idx, "value", e.target.value)}
                         placeholder="Nilai (contoh: 500gr)"
                         className="w-1/2 rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                       />
@@ -457,9 +487,7 @@ export default function UploadProdukPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm text-gray-300">
-                      Varian (opsional)
-                    </label>
+                    <label className="text-sm text-gray-300">Varian (opsional)</label>
                   </div>
                   <button
                     type="button"
@@ -479,21 +507,13 @@ export default function UploadProdukPage() {
                       <div className="flex flex-col gap-3 md:flex-row">
                         <input
                           value={v.optionGroup}
-                          onChange={(e) =>
-                            handleVariantChange(
-                              idx,
-                              "optionGroup",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => handleVariantChange(idx, "optionGroup", e.target.value)}
                           placeholder="Option group (contoh: warna)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
                         <input
                           value={v.name}
-                          onChange={(e) =>
-                            handleVariantChange(idx, "name", e.target.value)
-                          }
+                          onChange={(e) => handleVariantChange(idx, "name", e.target.value)}
                           placeholder="Nama varian (contoh: 453 / 50gram)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -503,9 +523,7 @@ export default function UploadProdukPage() {
                           type="number"
                           min="0"
                           value={v.price}
-                          onChange={(e) =>
-                            handleVariantChange(idx, "price", e.target.value)
-                          }
+                          onChange={(e) => handleVariantChange(idx, "price", e.target.value)}
                           placeholder="Harga varian (opsional)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -513,9 +531,7 @@ export default function UploadProdukPage() {
                           type="number"
                           min="0"
                           value={v.stock}
-                          onChange={(e) =>
-                            handleVariantChange(idx, "stock", e.target.value)
-                          }
+                          onChange={(e) => handleVariantChange(idx, "stock", e.target.value)}
                           placeholder="Stok varian"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -525,12 +541,7 @@ export default function UploadProdukPage() {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) =>
-                              handleVariantImage(
-                                idx,
-                                e.target.files?.[0] ?? null
-                              )
-                            }
+                            onChange={(e) => handleVariantImage(idx, e.target.files?.[0] ?? null)}
                             className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#3a3a3a] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#0779FF] focus:outline-none"
                           />
                           {v.preview && (
@@ -565,17 +576,13 @@ export default function UploadProdukPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) =>
-                    handleMainPhotoChange(e.target.files?.[0] ?? null)
-                  }
+                  onChange={(e) => handleMainPhotoChange(e.target.files?.[0] ?? null)}
                   className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#0779FF] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#0779FF] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm text-gray-300">
-                  Gallery Foto (opsional)
-                </label>
+                <label className="text-sm text-gray-300">Gallery Foto (opsional)</label>
                 <input
                   type="file"
                   accept="image/*"

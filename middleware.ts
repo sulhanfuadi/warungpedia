@@ -2,8 +2,20 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
-  // Allow sellerId to be passed via cookie or query for product uploads (no auth enforcement).
   if (req.nextUrl.pathname.startsWith("/api/penjual/products")) {
+    const authHeader = req.headers.get("authorization");
+    // Block early when tidak ada token Bearer, agar upload produk hanya via seller login.
+    if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized: login sebagai seller diperlukan" }),
+        {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }
+
+    // Tetap oper sellerId dari cookie/query untuk kompatibilitas, meski server akan verifikasi token.
     const sellerFromCookie = req.cookies.get("sellerId")?.value;
     const sellerFromQuery = req.nextUrl.searchParams.get("sellerId");
     const sellerId = sellerFromCookie || sellerFromQuery;

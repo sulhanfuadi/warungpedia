@@ -298,7 +298,7 @@ export default function RegisterPage() {
                   <div className="max-w-md mx-auto space-y-6">
                     <div className="text-center mb-8">
                       <h2 className="text-3xl font-bold text-white mb-2">
-                        Buat Akun Login
+                        Daftar Akun Penjual
                       </h2>
                       <p className="text-gray-400">
                         Email ini akan digunakan untuk masuk ke dashboard
@@ -310,7 +310,7 @@ export default function RegisterPage() {
                       {/* Email */}
                       <div>
                         <label className="block mb-2 font-medium text-white">
-                          Email PIC (untuk Login)*
+                          Email
                         </label>
                         <input
                           type="email"

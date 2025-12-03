@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer
 } from "recharts";
+import { supabase } from "@/lib/supabaseClient";
 
 const COLORS = ["#0779FF", "#4ade80", "#facc15", "#f87171"];
 
@@ -27,9 +29,54 @@ interface DashboardStats {
 }
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  const adminEmails = [
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+  ];
+
+  const inferRole = (session: unknown): string | undefined => {
+    if (!session || typeof session !== "object") return undefined;
+    const s = session as { user?: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown>; email?: string } };
+    const metaRole =
+      (s.user?.user_metadata?.role as string | undefined) ||
+      (s.user?.app_metadata?.role as string | undefined);
+    if (metaRole) return metaRole;
+    const email = s.user?.email;
+    if (email && adminEmails.includes(email)) return "admin";
+    return undefined;
+  };
 
   useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      const role = inferRole(data.session);
+      if (!data.session || role !== "admin") {
+        router.replace("/admin/login");
+        return;
+      }
+      if (active) {
+        setAuthChecking(false);
+        load();
+      }
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      const role =
+        (session?.user.user_metadata as Record<string, unknown>)?.role ||
+        (session?.user.app_metadata as Record<string, unknown>)?.role;
+      if (event === "SIGNED_OUT" || !session || role !== "admin") {
+        router.replace("/admin/login");
+      }
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription.unsubscribe();
+    };
+
     async function load() {
       const res = await fetch("/api/dashboard");
       const data = await res.json();
@@ -40,10 +87,10 @@ export default function AdminDashboardPage() {
         storesByProvince: data.storesByProvince ?? [],
       });
     }
-    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!stats) {
+  if (authChecking || !stats) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-center">
@@ -59,13 +106,42 @@ export default function AdminDashboardPage() {
 
       {/* HEADER */}
       <header className="bg-[#2a2a2a] text-white p-6 shadow-2xl border-b border-[#3a3a3a]">
-        <div className="container mx-auto flex items-center gap-4">
+        <div className="container mx-auto flex items-center justify-between gap-4">
           <Logo size="lg" variant="white" showText={true} href="/" />
-          <div className="h-8 w-px bg-[#3a3a3a]"></div>
-          <div>
+          <div className="hidden h-8 w-px bg-[#3a3a3a] md:block"></div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Admin Platform</h1>
             <p className="text-sm text-gray-400">Dashboard Statistik</p>
           </div>
+          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <a
+              href="/admin/dashboard"
+              className="rounded-lg border border-transparent bg-[#0779FF] px-3 py-2 font-semibold text-white hover:bg-[#0669dd]"
+            >
+              Dashboard
+            </a>
+            <a
+              href="/admin/sellers"
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-[#0779FF]"
+            >
+              Verifikasi Seller
+            </a>
+            <a
+              href="/admin/sellers/manage"
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-[#0779FF]"
+            >
+              Kelola Seller
+            </a>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.replace("/admin/login");
+              }}
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300"
+            >
+              Logout
+            </button>
+          </nav>
         </div>
       </header>
 
