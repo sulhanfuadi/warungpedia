@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test HTML2PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body style="font-family:Arial;padding:20px;">
+    <h1>Test HTML2PDF Functionality</h1>
+    
+    <div id="content" style="padding:20px;background:#f0f0f0;border:1px solid #ccc;margin:20px 0;">
+        <h2>LAPORAN DAFTAR AKUN PENJUAL</h2>
+        <p>Warungpedia Admin System</p>
+        
+        <div style="margin:20px 0;padding:10px;background:white;">
+            <p><strong>Filter:</strong> ALL</p>
+            <p><strong>Total Penjual:</strong> 11</p>
+            <p><strong>Tanggal Generate:</strong> 4 Desember 2025</p>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;border:1px solid #999;">
+            <thead>
+                <tr style="background:#0779FF;color:white;">
+                    <th style="border:1px solid #999;padding:10px;text-align:left;">No</th>
+                    <th style="border:1px solid #999;padding:10px;text-align:left;">Nama Toko</th>
+                    <th style="border:1px solid #999;padding:10px;text-align:left;">PIC</th>
+                    <th style="border:1px solid #999;padding:10px;text-align:center;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border:1px solid #999;padding:10px;">1</td>
+                    <td style="border:1px solid #999;padding:10px;">Toko Maju</td>
+                    <td style="border:1px solid #999;padding:10px;">Budi Santoso</td>
+                    <td style="border:1px solid #999;padding:10px;color:#22c55e;font-weight:bold;text-align:center;">ACTIVE</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #999;padding:10px;">2</td>
+                    <td style="border:1px solid #999;padding:10px;">Toko Indah</td>
+                    <td style="border:1px solid #999;padding:10px;">Siti Nurhaliza</td>
+                    <td style="border:1px solid #999;padding:10px;color:#ef4444;font-weight:bold;text-align:center;">INACTIVE</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #999;padding:10px;">3</td>
+                    <td style="border:1px solid #999;padding:10px;">Toko Jaya</td>
+                    <td style="border:1px solid #999;padding:10px;">Ahmad Ridho</td>
+                    <td style="border:1px solid #999;padding:10px;color:#22c55e;font-weight:bold;text-align:center;">ACTIVE</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <button onclick="generatePDF()" style="padding:10px 20px;background:#0779FF;color:white;border:none;cursor:pointer;font-size:14px;">
+        Download PDF
+    </button>
+
+    <script>
+        function generatePDF() {
+            console.log("🔍 Checking html2pdf availability...");
+            console.log("html2pdf:", typeof html2pdf);
+            console.log("window.html2pdf:", typeof window.html2pdf);
+
+            if (typeof html2pdf === 'undefined') {
+                alert("❌ html2pdf not available!");
+                return;
+            }
+
+            const element = document.getElementById('content');
+            console.log("📄 Element found:", !!element);
+            console.log("📝 Content length:", element.innerText.length);
+
+            const options = {
+                margin: 10,
+                filename: 'test_report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            console.log("✅ Starting PDF generation...");
+            html2pdf()
+                .set(options)
+                .from(element)
+                .save()
+                .then(() => {
+                    console.log("✅ PDF generated successfully!");
+                    alert("✅ PDF generated successfully!");
+                })
+                .catch(err => {
+                    console.error("❌ PDF generation error:", err);
+                    alert("❌ Error: " + err);
+                });
+        }
+    </script>
+</body>
+</html>

@@ -120,173 +120,89 @@ const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const handleDownloadReport = async () => {
     try {
       const statusFilter = filter === "ALL" ? "ALL" : filter;
-      console.log(`📥 Downloading report for status: ${statusFilter}`);
+      console.log(`📥 [Step 1] Fetching report data untuk status: ${statusFilter}`);
 
-      // Fetch JSON data from API
-      const response = await fetch(
-        `/api/admin/sellers/report?status=${statusFilter}`
-      );
-
-      console.log(`Response status: ${response.status}`);
-
+      // Step 1: Fetch data dari Supabase via API
+      const response = await fetch(`/api/admin/sellers/report?status=${statusFilter}`);
+      
       if (!response.ok) {
-        let errorMessage = "Unknown error";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          console.error("❌ API Error:", errorData);
-        } catch (parseError) {
-          const errorText = await response.text();
-          errorMessage = errorText || `HTTP ${response.status}`;
-          console.error("❌ API Error (non-JSON response):", errorText);
-        }
-        alert(`❌ Gagal mengunduh laporan: ${errorMessage}`);
-        return;
+        throw new Error(`API error: ${response.status}`);
       }
 
       const reportData = await response.json();
-      console.log(`✅ Report data fetched:`, reportData);
+      console.log(`✅ [Step 2] Data dari Supabase:`, reportData.data);
+      console.log(`   Total sellers: ${reportData.data.length}`);
 
-      if (!reportData.success || !reportData.data || reportData.data.length === 0) {
-        alert("❌ Tidak ada data untuk diunduh");
+      if (!reportData.success || !reportData.data?.length) {
+        alert("Tidak ada data untuk diunduh");
         return;
       }
 
-      // Build HTML content for PDF
+      // Step 2: Check library availability
+      console.log(`🔍 [Step 3] Checking html2pdf...`);
+      console.log(`   typeof html2pdf: ${typeof (window as any).html2pdf}`);
+
+      if (!((window as any).html2pdf)) {
+        throw new Error("html2pdf library tidak tersedia di window object");
+      }
+
+      // Step 3: Buat HTML string sederhana (Landscape)
       const generatedDate = new Date(reportData.generatedAt).toLocaleString("id-ID");
-      const htmlContent = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h1 style="text-align: center; color: #1a1a1a; margin-bottom: 10px;">Laporan Data Penjual</h1>
-          <p style="text-align: center; color: #666; margin-bottom: 20px;">Warungpedia Admin System</p>
-          
-          <div style="margin-bottom: 20px; border-top: 2px solid #0779FF; border-bottom: 1px solid #ccc; padding: 10px 0;">
-            <p style="margin: 5px 0;"><strong>Filter Status:</strong> ${reportData.filterStatus}</p>
-            <p style="margin: 5px 0;"><strong>Total Record:</strong> ${reportData.totalRecords}</p>
-            <p style="margin: 5px 0;"><strong>Tanggal Generate:</strong> ${generatedDate}</p>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-              <tr style="background-color: #0779FF; color: white;">
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">No</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Nama Toko</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">PIC</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Email</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Kota</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Status</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Tanggal Daftar</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${reportData.data
-                .map(
-                  (row: { no: number; store_name: string; pic_name: string; pic_email: string; pic_city: string; status: string; created_at: string }) => `
-                <tr style="${row.no % 2 === 0 ? "background-color: #f9f9f9;" : ""}">
-                  <td style="border: 1px solid #ccc; padding: 8px;">${row.no}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px;">${row.store_name}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px;">${row.pic_name}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px;">${row.pic_email}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px;">${row.pic_city}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold; color: ${
-                    row.status === "ACTIVE" ? "#22c55e" : row.status === "INACTIVE" ? "#ef4444" : "#f59e0b"
-                  };">${row.status}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px;">${new Date(row.created_at).toLocaleDateString("id-ID")}</td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          </table>
-
-          <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; text-align: center; color: #999; font-size: 12px;">
-            <p>Dokumen ini dibuat otomatis oleh sistem Warungpedia</p>
-            <p>© 2025 Warungpedia. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-
-      const filename = `Laporan_Penjual_${statusFilter}_${new Date().toISOString().split("T")[0]}.pdf`;
-
-      console.log(`📄 Generating PDF: ${filename}`);
-
-      // Create temporary element with larger size for better rendering
-      const element = document.createElement("div");
-      element.innerHTML = htmlContent;
-      element.style.width = "210mm";
-      element.style.height = "297mm";
-      element.style.padding = "20mm";
-      element.style.boxSizing = "border-box";
-      element.style.backgroundColor = "white";
-      element.style.visibility = "hidden";
-      element.style.position = "absolute";
-      element.style.left = "-9999px";
-      document.body.appendChild(element);
-
-      // Wait a moment for the DOM to render
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      console.log(`Element content length: ${element.innerText.length}`);
-
-      // Use html2pdf from window object
-      if (typeof window !== "undefined" && (window as any).html2pdf) {
-        const html2pdf = (window as any).html2pdf;
-        const options = {
-          margin: [10, 10, 10, 10],
-          filename: filename,
-          image: { type: "jpeg" as const, quality: 0.98 },
-          html2canvas: { 
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff"
-          },
-          jsPDF: { 
-            orientation: "landscape" as const, 
-            unit: "mm", 
-            format: "a4",
-            compress: true
-          },
-        };
+      
+      let tableRows = "";
+      reportData.data.forEach((seller: any, idx: number) => {
+        const statusColor = 
+          seller.status === "ACTIVE" ? "#22c55e" :
+          seller.status === "INACTIVE" ? "#ef4444" : "#f59e0b";
         
-        try {
-          console.log(`Starting pdf generation with html2pdf...`);
-          await html2pdf().set(options).from(element).save();
-          console.log(`✅ PDF saved successfully`);
-        } catch (pdfError) {
-          console.error(`❌ PDF generation error:`, pdfError);
-          throw pdfError;
-        }
-      } else {
-        console.warn("⚠️ html2pdf not loaded, trying alternative approach");
-        // Wait for it to load
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        if ((window as any).html2pdf) {
-          const html2pdf = (window as any).html2pdf;
-          const options = {
-            margin: [10, 10, 10, 10],
-            filename: filename,
-            image: { type: "jpeg" as const, quality: 0.98 },
-            html2canvas: { scale: 2, backgroundColor: "#ffffff" },
-            jsPDF: { orientation: "landscape" as const, unit: "mm", format: "a4" },
-          };
-          await html2pdf().set(options).from(element).save();
-        } else {
-          throw new Error("html2pdf library not available");
-        }
-      }
+        tableRows += `<tr><td style="border:1px solid #000;padding:10px;text-align:center;color:#000;font-size:11px;">${idx + 1}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:11px;">${seller.store_name}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:11px;">${seller.pic_name}</td><td style="border:1px solid #000;padding:10px;text-align:center;color:${statusColor};font-weight:bold;font-size:11px;">${seller.status}</td></tr>`;
+      });
 
-      // Cleanup
-      if (element.parentNode) {
-        document.body.removeChild(element);
-      }
+      const htmlContent = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;padding:15px;margin:0;color:#000;"><h1 style="text-align:center;color:#000;font-size:16px;margin:0 0 5px 0;">LAPORAN DAFTAR AKUN PENJUAL</h1><p style="text-align:center;color:#000;font-size:11px;margin:0 0 15px 0;">Warungpedia Admin System</p><div style="margin:10px 0;padding:10px;background:#f0f0f0;border:1px solid #000;"><p style="margin:3px 0;color:#000;font-size:10px;"><strong>Filter:</strong> ${reportData.filterStatus}</p><p style="margin:3px 0;color:#000;font-size:10px;"><strong>Total Penjual:</strong> ${reportData.totalRecords}</p><p style="margin:3px 0;color:#000;font-size:10px;"><strong>Tanggal:</strong> ${generatedDate}</p></div><table style="width:100%;border-collapse:collapse;border:1px solid #000;margin:15px 0;"><thead><tr style="background:#0779FF;color:white;"><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:11px;">No</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:11px;">Nama Toko</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:11px;">PIC</th><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:11px;">Status</th></tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:20px;border-top:1px solid #000;padding-top:10px;text-align:center;color:#000;font-size:9px;"><p style="margin:3px 0;">Dokumen ini dibuat otomatis oleh Warungpedia</p><p style="margin:0;">© 2025 Warungpedia</p></div></body></html>`;
 
-      console.log(`✅ PDF/File generated and downloaded successfully`);
-      alert("✅ Laporan berhasil diunduh");
+      console.log(`✅ [Step 4] HTML generated: ${htmlContent.length} chars`);
+
+      // Step 4: Create temporary element
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = htmlContent;
+      tempDiv.style.width = "800px";
+      tempDiv.style.background = "white";
+      tempDiv.style.padding = "0";
+      tempDiv.style.margin = "0";
+      
+      document.body.appendChild(tempDiv);
+      console.log(`✅ [Step 5] Element appended to DOM`);
+      console.log(`   Element innerText length: ${tempDiv.innerText.length}`);
+
+      // Wait untuk rendering
+      await new Promise(r => setTimeout(r, 500));
+
+      const filename = `Laporan_Penjual_${statusFilter}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      console.log(`📄 [Step 6] Starting PDF generation: ${filename}`);
+
+      const html2pdf = (window as any).html2pdf;
+      const options = {
+        margin: 5,
+        filename: filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { orientation: "landscape", unit: "mm", format: "a4", compress: true }
+      };
+
+      // Generate PDF
+      await html2pdf()
+        .set(options)
+        .from(tempDiv)
+        .save();
+
+      console.log(`✅ [Step 7] PDF generated and downloaded!`);
+      
+      document.body.removeChild(tempDiv);
+      alert(`✅ Laporan PDF berhasil diunduh!\n${filename}`);
+
     } catch (error) {
-      console.error("❌ Error downloading report:", error);
-      alert(
-        `Terjadi kesalahan saat mengunduh laporan: ${error instanceof Error ? error.message : String(error)}`
-      );
+      console.error("❌ ERROR:", error);
+      alert(`❌ Gagal: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
