@@ -250,16 +250,19 @@ export async function POST(request: NextRequest) {
       store_description: formData.get("storeDescription") || null,
       pic_name: formData.get("picName"),
       pic_phone: formData.get("picPhone"),
+      pic_email: formData.get("picEmail"),
       pic_street: formData.get("picStreet"),
       pic_rt: formData.get("picRT"),
       pic_rw: formData.get("picRW"),
       pic_village: formData.get("picVillage"),
+      pic_district: formData.get("picDistrict"),
       pic_city: formData.get("picCity"),
       pic_province: formData.get("picProvince"),
       pic_ktp_number: formData.get("picKtpNumber"),
       pic_photo_path: picPhotoPath,
       pic_ktp_file_path: picKtpFilePath,
       status: "PENDING",
+      role: "seller",
     });
 
     if (dbError) {
