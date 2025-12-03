@@ -1,0 +1,29 @@
+[
+  {
+    "customer_name": "Rani Putri",
+    "phone": "+6281299001122",
+    "email": "rani.putri@example.com",
+    "province": "Jawa Barat",
+    "comment": "Rasa kopi mantap, pengiriman cepat dan aman.",
+    "rating": 5,
+    "product_id": "1897d33c-6a0f-4f44-98b1-8b8e02f72a52"
+  },
+  {
+    "customer_name": "Bagus Santoso",
+    "phone": "+6281288876543",
+    "email": "bagus.santoso@example.com",
+    "province": "DKI Jakarta",
+    "comment": "Kemasan rapi, rasa cukup konsisten meski stok menipis.",
+    "rating": 4,
+    "product_id": "1897d33c-6a0f-4f44-98b1-8b8e02f72a52"
+  },
+  {
+    "customer_name": "Dewi Kartika",
+    "phone": "+6285777002211",
+    "email": "dewi.kartika@example.com",
+    "province": "Jawa Timur",
+    "comment": "Tekstur crumb cake lembut tapi pengiriman sedikit lambat.",
+    "rating": 3,
+    "product_id": "65fd1d33-f4b4-4c8d-b0d4-56508df4c8c0"
+  }
+]
