@@ -288,7 +288,7 @@ export async function POST(request: NextRequest) {
 
     // Kirim email verifikasi
     const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "signup",
+      type: "magiclink",
       email: picEmail,
       options: {
         redirectTo: `${

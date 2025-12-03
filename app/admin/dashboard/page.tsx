@@ -178,7 +178,7 @@ export default function AdminDashboardPage() {
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
-                    data={stats.productCategories}
+                    data={stats.productCategories as any}
                     dataKey="total"
                     nameKey="category"
                     outerRadius={120}
@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
                       const text = payload.value.split(" ");
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          {text.map((word, i) => (
+                          {text.map((word: string, i: number) => (
                             <text
                               key={i}
                               x={0}
