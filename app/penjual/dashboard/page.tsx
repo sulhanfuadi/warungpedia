@@ -51,15 +51,17 @@ export default function SellerDashboardPage() {
 
     checkSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      const role = getRole(session?.user as SessionUser);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const role = getRole(session?.user as SessionUser);
 
-      if (!session || event === "SIGNED_OUT" || role !== "seller") {
-        router.replace("/penjual/login");
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        setUser(session.user as SessionUser);
+        if (!session || event === "SIGNED_OUT" || role !== "seller") {
+          router.replace("/penjual/login");
+        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          setUser(session.user as SessionUser);
+        }
       }
-    });
+    );
 
     return () => {
       mounted = false;
@@ -92,7 +94,9 @@ export default function SellerDashboardPage() {
       }
 
       const response = await fetch(
-        `/api/penjual/laporan/stok-by-stok?sellerId=${encodeURIComponent(user.id)}`,
+        `/api/penjual/laporan/stok-by-stok?sellerId=${encodeURIComponent(
+          user.id
+        )}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -144,7 +148,9 @@ export default function SellerDashboardPage() {
       }
 
       const response = await fetch(
-        `/api/penjual/laporan/stok-menipis?sellerId=${encodeURIComponent(user.id)}`,
+        `/api/penjual/laporan/stok-menipis?sellerId=${encodeURIComponent(
+          user.id
+        )}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -152,7 +158,9 @@ export default function SellerDashboardPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Gagal download laporan stok menipis");
+        throw new Error(
+          errorData.error || "Gagal download laporan stok menipis"
+        );
       }
 
       const blob = await response.blob();
@@ -221,14 +229,18 @@ export default function SellerDashboardPage() {
                 disabled={isDownloading}
                 className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-green-500 hover:text-green-300 disabled:opacity-50"
               >
-                {isDownloading ? "⏳ Generating..." : "📥 Download Laporan Stok (Urut Stok)"}
+                {isDownloading
+                  ? "⏳ Generating..."
+                  : "📥 Download Laporan Stok (Urut Stok)"}
               </button>
               <button
                 onClick={handleDownloadStokMenipis}
                 disabled={isDownloading}
                 className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-yellow-500 hover:text-yellow-300 disabled:opacity-50"
               >
-                {isDownloading ? "⏳ Generating..." : "⚠️ Download Laporan Stok Menipis (< 2)"}
+                {isDownloading
+                  ? "⏳ Generating..."
+                  : "⚠️ Download Laporan Stok Menipis (< 2)"}
               </button>
             </div>
           </div>

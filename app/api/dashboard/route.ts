@@ -1,56 +1,45 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { NextRequest, NextResponse } from "next/server";
+import { getSellerDashboardStats } from "@/lib/controllers/sellerDashboardController";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const sellerId = searchParams.get("sellerId");
 
-  // 1. Count users based on store_name (seller)
-  const sellersCountRes = await supabaseAdmin
-    .from("sellers")
-    .select("store_name", { count: "exact", head: true });
+    if (!sellerId) {
+      return NextResponse.json(
+        { error: "Parameter sellerId wajib ada" },
+        { status: 400 }
+      );
+    }
 
-  const userCount = sellersCountRes.count ?? 0;
+    console.log("📊 Fetching dashboard for seller:", sellerId);
 
+    const data = await getSellerDashboardStats(sellerId);
 
-  // 2. Product categories
-  const productsRes = await supabaseAdmin.from("products").select("category");
-  let productCategories: { category: string; total: number }[] = [];
+    if (!data) {
+      console.error("❌ No data returned from controller");
+      return NextResponse.json(
+        { error: "Data dashboard tidak ditemukan" },
+        { status: 404 }
+      );
+    }
 
-  if (productsRes.data) {
-    const map: Record<string, number> = {};
-    productsRes.data.forEach((p) => {
-      const cat = p.category ?? "Unknown";
-      map[cat] = (map[cat] ?? 0) + 1;
+    console.log("✅ Dashboard data fetched successfully:", {
+      products: data.stockDistribution.length,
+      ratings: data.ratingDistribution.length,
+      provinces: data.provinceDistribution.length,
     });
 
-    productCategories = Object.entries(map).map(([category, total]) => ({
-      category,
-      total,
-    }));
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("❌ Dashboard API Error:", error);
+    return NextResponse.json(
+      {
+        error: "Gagal memuat dashboard",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
-
-  // 3. Stores by province
-  const sellersRes = await supabaseAdmin.from("sellers").select("pic_province");
-
-  const provMap: Record<string, number> = {};
-
-  if (sellersRes.data) {
-    sellersRes.data.forEach((s) => {
-      const prov = s.pic_province ?? "Unknown";
-      provMap[prov] = (provMap[prov] ?? 0) + 1;
-    });
-  }
-
-  const storesByProvince = Object.entries(provMap).map(([province, total]) => ({
-    province,
-    total,
-  }));
-
-
-  // Final return
-  return NextResponse.json({
-    users: userCount,
-    productCategories,
-    storesByProvince,
-  });
 }
-
