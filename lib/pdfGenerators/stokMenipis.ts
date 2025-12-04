@@ -18,13 +18,24 @@ export async function generateStokMenipisPDF(
       sellerId
     );
 
-    // Query data produk dengan stok < 2 - TANPA average_rating
+    // Query seller info
+    const { data: seller, error: sellerError } = await supabaseAdmin
+      .from("sellers")
+      .select("store_name, pic_name, pic_phone, pic_email")
+      .eq("id", sellerId)
+      .single();
+
+    if (sellerError) {
+      console.error("❌ [PDF-MENIPIS] Seller error:", sellerError);
+    }
+
+    // Query data produk dengan stok < 2
     const { data: products, error } = await supabaseAdmin
       .from("products")
       .select("id, name, stock, price, category")
       .eq("seller_id", sellerId)
       .lt("stock", 2)
-      .order("stock", { ascending: false });
+      .order("stock", { ascending: true });
 
     if (error) {
       console.error("❌ [PDF-MENIPIS] Database error:", error);
@@ -35,248 +46,477 @@ export async function generateStokMenipisPDF(
 
     console.log("✅ [PDF-MENIPIS] Products fetched:", products?.length || 0);
 
-    // Create PDF document
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    let page = pdfDoc.addPage([595, 842]); // A4 size
-    const { height } = page.getSize();
+    let page = pdfDoc.addPage([595, 842]); // A4
+    const { width, height } = page.getSize();
     let yPosition = height - 50;
 
-    // Header
-    page.drawText("LAPORAN STOK PRODUK MENIPIS", {
+    // ==================== HEADER ====================
+    page.drawText("WARUNGPEDIA", {
       x: 50,
       y: yPosition,
       size: 20,
       font: fontBold,
-      color: rgb(0.8, 0, 0),
+      color: rgb(0.8, 0.2, 0),
     });
+
+    page.drawText("Laporan Stok Produk Menipis", {
+      x: 50,
+      y: yPosition - 25,
+      size: 14,
+      font: fontBold,
+      color: rgb(0.8, 0.2, 0),
+    });
+
+    yPosition -= 50;
+
+    page.drawLine({
+      start: { x: 50, y: yPosition },
+      end: { x: width - 50, y: yPosition },
+      thickness: 1,
+      color: rgb(0.8, 0.2, 0),
+    });
+
     yPosition -= 25;
 
-    page.drawText("(Produk dengan Stok < 2 - Harus Segera Dipesan)", {
-      x: 50,
-      y: yPosition,
-      size: 12,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 30;
-
-    page.drawText(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`, {
+    // ==================== INFO SECTION ====================
+    page.drawText("Informasi Penjual", {
       x: 50,
       y: yPosition,
       size: 10,
-      font: font,
+      font: fontBold,
     });
     yPosition -= 15;
 
-    page.drawText(`Seller ID: ${sellerId}`, {
+    page.drawText(`Nama Toko: ${seller?.store_name || "-"}`, {
+      x: 50,
+      y: yPosition,
+      size: 9,
+      font: font,
+    });
+    yPosition -= 12;
+
+    page.drawText(`Pemilik: ${seller?.pic_name || "-"}`, {
+      x: 50,
+      y: yPosition,
+      size: 9,
+      font: font,
+    });
+    yPosition -= 12;
+
+    page.drawText(`Kontak: ${seller?.pic_phone || "-"}`, {
+      x: 50,
+      y: yPosition,
+      size: 9,
+      font: font,
+    });
+    yPosition -= 12;
+
+    page.drawText(`Email: ${seller?.pic_email || "-"}`, {
+      x: 50,
+      y: yPosition,
+      size: 9,
+      font: font,
+    });
+
+    yPosition -= 20;
+
+    // Report Info
+    const currentDate = new Date();
+    page.drawText("Informasi Laporan", {
       x: 50,
       y: yPosition,
       size: 10,
-      font: font,
+      font: fontBold,
     });
     yPosition -= 15;
 
-    page.drawText(`Total Produk Menipis: ${products?.length || 0}`, {
-      x: 50,
-      y: yPosition,
-      size: 10,
-      font: font,
-    });
-    yPosition -= 30;
-
-    // Handle empty products
-    if (!products || products.length === 0) {
-      page.drawText("Tidak ada produk dengan stok menipis!", {
-        x: 150,
+    page.drawText(
+      `Tanggal: ${currentDate.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })}`,
+      {
+        x: 50,
         y: yPosition,
-        size: 14,
-        font: fontBold,
-        color: rgb(0, 0.7, 0),
-      });
-      yPosition -= 25;
-      page.drawText("Semua produk Anda memiliki stok yang cukup (>= 2).", {
-        x: 120,
-        y: yPosition,
-        size: 10,
+        size: 9,
         font: font,
+      }
+    );
+    yPosition -= 12;
+
+    page.drawText(
+      `Waktu: ${currentDate.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })} WIB`,
+      {
+        x: 50,
+        y: yPosition,
+        size: 9,
+        font: font,
+      }
+    );
+    yPosition -= 12;
+
+    page.drawText(`Produk Menipis: ${products?.length || 0} item`, {
+      x: 50,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.8, 0, 0),
+    });
+
+    yPosition -= 30;
+
+    // ==================== EMPTY STATE ====================
+    if (!products || products.length === 0) {
+      page.drawRectangle({
+        x: 100,
+        y: yPosition - 60,
+        width: width - 200,
+        height: 60,
+        color: rgb(0.9, 1, 0.9),
+      });
+
+      page.drawText("Tidak ada produk dengan stok menipis (< 2)", {
+        x: 150,
+        y: yPosition - 30,
+        size: 11,
+        font: fontBold,
+        color: rgb(0, 0.6, 0),
+      });
+
+      page.drawText("Semua produk memiliki stok yang cukup", {
+        x: 170,
+        y: yPosition - 45,
+        size: 9,
+        font: font,
+        color: rgb(0, 0.5, 0),
+      });
+
+      page.drawText(`Halaman 1`, {
+        x: width / 2 - 30,
+        y: 50,
+        size: 8,
+        font: font,
+        color: rgb(0.5, 0.5, 0.5),
       });
 
       const pdfBytes = await pdfDoc.save();
       return Buffer.from(pdfBytes);
     }
 
-    // Table Header (TANPA Rating)
-    const colWidths = [40, 200, 80, 100, 100];
-    const headers = ["No", "Nama Produk", "Stok", "Harga (Rp)", "Kategori"];
-    let currentX = 50;
-
-    headers.forEach((header, i) => {
-      page.drawText(header, {
-        x: currentX,
-        y: yPosition,
-        size: 10,
-        font: fontBold,
-      });
-      currentX += colWidths[i];
+    // ==================== WARNING BOX ====================
+    page.drawRectangle({
+      x: 40,
+      y: yPosition - 25,
+      width: width - 80,
+      height: 25,
+      color: rgb(1, 0.95, 0.9),
     });
 
-    page.drawLine({
-      start: { x: 50, y: yPosition - 5 },
-      end: { x: 530, y: yPosition - 5 },
-      thickness: 1,
-      color: rgb(0, 0, 0),
+    page.drawText("PERHATIAN: Produk berikut memerlukan restok segera!", {
+      x: 50,
+      y: yPosition - 15,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.8, 0.2, 0),
     });
 
-    yPosition -= 20;
+    yPosition -= 35;
+
+    // ==================== TABLE ====================
+    const tableTop = yPosition;
+    const rowHeight = 18;
+
+    // Header background
+    page.drawRectangle({
+      x: 40,
+      y: tableTop - rowHeight,
+      width: width - 80,
+      height: rowHeight,
+      color: rgb(0.9, 0.7, 0.7),
+    });
+
+    // Column definitions
+    const colX = {
+      no: 45,
+      name: 75,
+      stock: 300,
+      price: 360,
+      category: 450,
+    };
+
+    // Headers
+    page.drawText("No", {
+      x: colX.no,
+      y: tableTop - 13,
+      size: 9,
+      font: fontBold,
+    });
+
+    page.drawText("Nama Produk", {
+      x: colX.name,
+      y: tableTop - 13,
+      size: 9,
+      font: fontBold,
+    });
+
+    page.drawText("Stok", {
+      x: colX.stock,
+      y: tableTop - 13,
+      size: 9,
+      font: fontBold,
+    });
+
+    page.drawText("Harga (Rp)", {
+      x: colX.price,
+      y: tableTop - 13,
+      size: 9,
+      font: fontBold,
+    });
+
+    page.drawText("Kategori", {
+      x: colX.category,
+      y: tableTop - 13,
+      size: 9,
+      font: fontBold,
+    });
+
+    yPosition = tableTop - rowHeight - 5;
 
     // Table Body
+    let pageNumber = 1;
     (products as ProductLowStockData[]).forEach((product, index) => {
-      if (yPosition < 50) {
+      // Check if need new page
+      if (yPosition < 100) {
+        // Footer
+        page.drawText(`Halaman ${pageNumber}`, {
+          x: width / 2 - 30,
+          y: 50,
+          size: 8,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+
+        // New page
         page = pdfDoc.addPage([595, 842]);
         yPosition = height - 50;
+        pageNumber++;
+
+        // Repeat header
+        page.drawText("WARUNGPEDIA - Laporan Stok Menipis (lanjutan)", {
+          x: 50,
+          y: yPosition,
+          size: 12,
+          font: fontBold,
+          color: rgb(0.8, 0.2, 0),
+        });
+        yPosition -= 30;
+
+        // Repeat table header
+        page.drawRectangle({
+          x: 40,
+          y: yPosition - rowHeight,
+          width: width - 80,
+          height: rowHeight,
+          color: rgb(0.9, 0.7, 0.7),
+        });
+
+        page.drawText("No", {
+          x: colX.no,
+          y: yPosition - 13,
+          size: 9,
+          font: fontBold,
+        });
+        page.drawText("Nama Produk", {
+          x: colX.name,
+          y: yPosition - 13,
+          size: 9,
+          font: fontBold,
+        });
+        page.drawText("Stok", {
+          x: colX.stock,
+          y: yPosition - 13,
+          size: 9,
+          font: fontBold,
+        });
+        page.drawText("Harga (Rp)", {
+          x: colX.price,
+          y: yPosition - 13,
+          size: 9,
+          font: fontBold,
+        });
+        page.drawText("Kategori", {
+          x: colX.category,
+          y: yPosition - 13,
+          size: 9,
+          font: fontBold,
+        });
+
+        yPosition -= rowHeight + 5;
       }
 
-      // Highlight background for low stock
-      if (product.stock === 0) {
-        page.drawRectangle({
-          x: 50,
-          y: yPosition - 2,
-          width: 480,
-          height: 18,
-          color: rgb(1, 0.9, 0.9),
-        });
-      } else if (product.stock === 1) {
-        page.drawRectangle({
-          x: 50,
-          y: yPosition - 2,
-          width: 480,
-          height: 18,
-          color: rgb(1, 0.95, 0.9),
-        });
-      }
+      // Row background dengan warna berdasarkan stok
+      const bgColor =
+        product.stock === 0
+          ? rgb(1, 0.85, 0.85) // Merah muda untuk habis
+          : product.stock === 1
+          ? rgb(1, 0.95, 0.85) // Orange muda untuk kritis
+          : rgb(0.97, 0.97, 0.97); // Abu-abu terang
 
-      currentX = 50;
+      page.drawRectangle({
+        x: 40,
+        y: yPosition - rowHeight,
+        width: width - 80,
+        height: rowHeight,
+        color: bgColor,
+      });
 
-      // No
+      // Row data
       page.drawText((index + 1).toString(), {
-        x: currentX + 15,
-        y: yPosition,
-        size: 9,
+        x: colX.no,
+        y: yPosition - 13,
+        size: 8,
         font: font,
       });
-      currentX += colWidths[0];
 
-      // Nama Produk
-      const productName = product.name || "-";
-      const truncatedName =
-        productName.length > 35
-          ? productName.substring(0, 32) + "..."
-          : productName;
-      page.drawText(truncatedName, {
-        x: currentX,
-        y: yPosition,
-        size: 9,
+      const productName =
+        product.name.length > 30
+          ? product.name.substring(0, 27) + "..."
+          : product.name;
+      page.drawText(productName, {
+        x: colX.name,
+        y: yPosition - 13,
+        size: 8,
         font: font,
       });
-      currentX += colWidths[1];
 
-      // Stok (with red color if 0)
+      // Stock dengan label status
+      const stockText =
+        product.stock === 0
+          ? "HABIS"
+          : product.stock === 1
+          ? "KRITIS"
+          : product.stock.toString();
       const stockColor =
         product.stock === 0
-          ? rgb(1, 0, 0)
+          ? rgb(0.8, 0, 0)
           : product.stock === 1
-          ? rgb(1, 0.4, 0)
+          ? rgb(0.8, 0.4, 0)
           : rgb(0, 0, 0);
-      page.drawText(product.stock?.toString() || "0", {
-        x: currentX + 30,
-        y: yPosition,
-        size: 9,
+
+      page.drawText(stockText, {
+        x: colX.stock,
+        y: yPosition - 13,
+        size: 8,
         font: fontBold,
         color: stockColor,
       });
-      currentX += colWidths[2];
 
-      // Harga
-      page.drawText(
-        product.price ? product.price.toLocaleString("id-ID") : "0",
-        {
-          x: currentX,
-          y: yPosition,
-          size: 9,
-          font: font,
-        }
-      );
-      currentX += colWidths[3];
-
-      // Kategori
-      const category = product.category || "-";
-      const truncatedCategory =
-        category.length > 18 ? category.substring(0, 15) + "..." : category;
-      page.drawText(truncatedCategory, {
-        x: currentX,
-        y: yPosition,
-        size: 9,
+      page.drawText((product.price || 0).toLocaleString("id-ID"), {
+        x: colX.price,
+        y: yPosition - 13,
+        size: 8,
         font: font,
       });
 
-      yPosition -= 20;
+      const category =
+        product.category.length > 12
+          ? product.category.substring(0, 9) + "..."
+          : product.category;
+      page.drawText(category, {
+        x: colX.category,
+        y: yPosition - 13,
+        size: 8,
+        font: font,
+      });
+
+      yPosition -= rowHeight;
     });
 
-    // Legend
+    // Footer - Legend
     yPosition -= 10;
-    page.drawText("Keterangan:", { x: 50, y: yPosition, size: 8, font: font });
+    page.drawText("Keterangan:", {
+      x: 50,
+      y: yPosition,
+      size: 8,
+      font: fontBold,
+    });
     yPosition -= 12;
+
     page.drawRectangle({
       x: 50,
-      y: yPosition,
-      width: 15,
+      y: yPosition - 2,
+      width: 10,
       height: 10,
-      color: rgb(1, 0.9, 0.9),
+      color: rgb(1, 0.85, 0.85),
     });
-    page.drawText("= Stok Habis (0)", {
-      x: 70,
-      y: yPosition + 2,
-      size: 8,
+    page.drawText("HABIS = Stok 0 (Prioritas Tinggi)", {
+      x: 65,
+      y: yPosition,
+      size: 7,
       font: font,
     });
-    yPosition -= 15;
+    yPosition -= 12;
+
     page.drawRectangle({
       x: 50,
-      y: yPosition,
-      width: 15,
+      y: yPosition - 2,
+      width: 10,
       height: 10,
-      color: rgb(1, 0.95, 0.9),
+      color: rgb(1, 0.95, 0.85),
     });
-    page.drawText("= Stok Kritis (1)", {
-      x: 70,
-      y: yPosition + 2,
-      size: 8,
+    page.drawText("KRITIS = Stok 1 (Segera Restok)", {
+      x: 65,
+      y: yPosition,
+      size: 7,
       font: font,
     });
 
-    // Footer
-    page.drawText("Laporan ini menampilkan produk yang perlu segera dipesan", {
-      x: 120,
-      y: 40,
+    // Final page footer
+    page.drawLine({
+      start: { x: 50, y: 80 },
+      end: { x: width - 50, y: 80 },
+      thickness: 0.5,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    page.drawText(
+      "* Segera lakukan restok untuk produk dengan status HABIS dan KRITIS",
+      {
+        x: 50,
+        y: 65,
+        size: 7,
+        font: font,
+        color: rgb(0.4, 0.4, 0.4),
+      }
+    );
+
+    page.drawText(`Halaman ${pageNumber}`, {
+      x: width / 2 - 30,
+      y: 50,
       size: 8,
       font: font,
       color: rgb(0.5, 0.5, 0.5),
     });
-    page.drawText("Laporan digenerate otomatis oleh sistem Warungpedia", {
-      x: 130,
-      y: 30,
-      size: 8,
-      font: font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
 
+    console.log("📄 [PDF-MENIPIS] Saving PDF...");
     const pdfBytes = await pdfDoc.save();
+    console.log(
+      "✅ [PDF-MENIPIS] PDF saved successfully, size:",
+      pdfBytes.length
+    );
+
     return Buffer.from(pdfBytes);
   } catch (error) {
     console.error("❌ [PDF-MENIPIS] Error:", error);
+    console.error("Stack:", error instanceof Error ? error.stack : "No stack");
     throw error;
   }
 }
