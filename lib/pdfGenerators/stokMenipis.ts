@@ -1,4 +1,4 @@
-import PDFDocument from "pdfkit";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 interface ProductLowStockData {
@@ -7,221 +7,276 @@ interface ProductLowStockData {
   stock: number;
   price: number;
   category: string;
-  average_rating: number | null;
 }
 
 export async function generateStokMenipisPDF(
   sellerId: string
 ): Promise<Buffer> {
-  // Query data produk dengan stok < 2 (urut stok menurun)
-  const { data: products, error } = await supabaseAdmin
-    .from("products")
-    .select("id, name, stock, price, category, average_rating")
-    .eq("seller_id", sellerId)
-    .lt("stock", 2) // ✅ FILTER: stok < 2
-    .order("stock", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching low stock products:", error);
-    throw new Error("Gagal mengambil data produk stok menipis");
-  }
-
-  // Create PDF document
-  const doc = new PDFDocument({ margin: 50 });
-  const buffers: Buffer[] = [];
-
-  doc.on("data", buffers.push.bind(buffers));
-
-  // Header
-  doc
-    .fontSize(20)
-    .font("Helvetica-Bold")
-    .text("⚠️ LAPORAN STOK PRODUK MENIPIS", { align: "center" })
-    .fontSize(12)
-    .font("Helvetica")
-    .text("(Produk dengan Stok < 2 - Harus Segera Dipesan)", {
-      align: "center",
-    })
-    .moveDown();
-
-  doc
-    .fontSize(10)
-    .text(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`)
-    .text(`Seller ID: ${sellerId}`)
-    .text(`Total Produk Menipis: ${products?.length || 0}`)
-    .moveDown();
-
-  // ✅ HANDLE: Jika tidak ada produk stok menipis
-  if (!products || products.length === 0) {
-    doc
-      .fontSize(14)
-      .font("Helvetica-Bold")
-      .fillColor("#00AA00")
-      .text("✅ Tidak ada produk dengan stok menipis!", { align: "center" })
-      .moveDown()
-      .fontSize(10)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("Semua produk Anda memiliki stok yang cukup (≥ 2).", {
-        align: "center",
-      });
-
-    doc.end();
-
-    return new Promise((resolve, reject) => {
-      doc.on("end", () => {
-        const pdfBuffer = Buffer.concat(buffers);
-        resolve(pdfBuffer);
-      });
-      doc.on("error", reject);
-    });
-  }
-
-  // Table Header
-  const startY = doc.y;
-  const colWidths = [40, 180, 60, 80, 80, 60];
-  const headers = [
-    "No",
-    "Nama Produk",
-    "Stok",
-    "Harga (Rp)",
-    "Kategori",
-    "Rating",
-  ];
-
-  let currentX = 50;
-  doc.fontSize(10).font("Helvetica-Bold").fillColor("#000000");
-
-  headers.forEach((header, i) => {
-    doc.text(header, currentX, startY, {
-      width: colWidths[i],
-      align: i === 0 ? "center" : "left",
-    });
-    currentX += colWidths[i];
-  });
-
-  doc
-    .moveTo(50, startY + 15)
-    .lineTo(550, startY + 15)
-    .stroke();
-
-  // Table Body
-  doc.font("Helvetica").fontSize(9);
-  let yPosition = startY + 20;
-
-  (products as ProductLowStockData[]).forEach((product, index) => {
-    // Check for page break
-    if (yPosition > 700) {
-      doc.addPage();
-      yPosition = 50;
-    }
-
-    currentX = 50;
-
-    // ✅ HIGHLIGHT: Baris dengan background merah muda untuk stok 0 atau 1
-    if (product.stock < 1) {
-      doc.rect(50, yPosition - 2, 500, 18).fill("#FFE5E5");
-    } else if (product.stock === 1) {
-      doc.rect(50, yPosition - 2, 500, 18).fill("#FFF5E5");
-    }
-
-    doc.fillColor("#000000"); // Reset text color
-
-    // No
-    doc.text((index + 1).toString(), currentX, yPosition, {
-      width: colWidths[0],
-      align: "center",
-    });
-    currentX += colWidths[0];
-
-    // Nama Produk
-    doc.text(product.name || "-", currentX, yPosition, {
-      width: colWidths[1],
-      align: "left",
-    });
-    currentX += colWidths[1];
-
-    // Stok (dengan warna merah jika 0)
-    if (product.stock === 0) {
-      doc.fillColor("#FF0000").font("Helvetica-Bold");
-    } else if (product.stock === 1) {
-      doc.fillColor("#FF6600").font("Helvetica-Bold");
-    }
-
-    doc.text(product.stock?.toString() || "0", currentX, yPosition, {
-      width: colWidths[2],
-      align: "right",
-    });
-
-    doc.fillColor("#000000").font("Helvetica"); // Reset
-    currentX += colWidths[2];
-
-    // Harga
-    doc.text(
-      product.price ? product.price.toLocaleString("id-ID") : "0",
-      currentX,
-      yPosition,
-      {
-        width: colWidths[3],
-        align: "right",
-      }
-    );
-    currentX += colWidths[3];
-
-    // Kategori
-    doc.text(product.category || "-", currentX, yPosition, {
-      width: colWidths[4],
-      align: "left",
-    });
-    currentX += colWidths[4];
-
-    // Rating
-    doc.text(
-      product.average_rating ? product.average_rating.toFixed(1) : "0.0",
-      currentX,
-      yPosition,
-      {
-        width: colWidths[5],
-        align: "center",
-      }
+  try {
+    console.log(
+      "📄 [PDF-MENIPIS] Starting generateStokMenipisPDF for:",
+      sellerId
     );
 
-    yPosition += 20;
-  });
+    // Query data produk dengan stok < 2 - TANPA average_rating
+    const { data: products, error } = await supabaseAdmin
+      .from("products")
+      .select("id, name, stock, price, category")
+      .eq("seller_id", sellerId)
+      .lt("stock", 2)
+      .order("stock", { ascending: false });
 
-  // Legend
-  doc
-    .moveDown(2)
-    .fontSize(8)
-    .fillColor("#000000")
-    .text("Keterangan:", 50, yPosition + 10)
-    .rect(50, yPosition + 22, 15, 10)
-    .fill("#FFE5E5")
-    .fillColor("#000000")
-    .text("= Stok Habis (0)", 70, yPosition + 23)
-    .rect(50, yPosition + 37, 15, 10)
-    .fill("#FFF5E5")
-    .fillColor("#000000")
-    .text("= Stok Kritis (1)", 70, yPosition + 38);
+    if (error) {
+      console.error("❌ [PDF-MENIPIS] Database error:", error);
+      throw new Error(
+        `Gagal mengambil data produk stok menipis: ${error.message}`
+      );
+    }
 
-  // Footer
-  doc
-    .moveDown(2)
-    .fontSize(8)
-    .text("⚠️ Laporan ini menampilkan produk yang perlu segera dipesan", {
-      align: "center",
-    })
-    .text("Laporan digenerate otomatis oleh sistem Warungpedia", {
-      align: "center",
+    console.log("✅ [PDF-MENIPIS] Products fetched:", products?.length || 0);
+
+    // Create PDF document
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    let page = pdfDoc.addPage([595, 842]); // A4 size
+    const { height } = page.getSize();
+    let yPosition = height - 50;
+
+    // Header
+    page.drawText("LAPORAN STOK PRODUK MENIPIS", {
+      x: 50,
+      y: yPosition,
+      size: 20,
+      font: fontBold,
+      color: rgb(0.8, 0, 0),
+    });
+    yPosition -= 25;
+
+    page.drawText("(Produk dengan Stok < 2 - Harus Segera Dipesan)", {
+      x: 50,
+      y: yPosition,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 30;
+
+    page.drawText(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
+    });
+    yPosition -= 15;
+
+    page.drawText(`Seller ID: ${sellerId}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
+    });
+    yPosition -= 15;
+
+    page.drawText(`Total Produk Menipis: ${products?.length || 0}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
+    });
+    yPosition -= 30;
+
+    // Handle empty products
+    if (!products || products.length === 0) {
+      page.drawText("Tidak ada produk dengan stok menipis!", {
+        x: 150,
+        y: yPosition,
+        size: 14,
+        font: fontBold,
+        color: rgb(0, 0.7, 0),
+      });
+      yPosition -= 25;
+      page.drawText("Semua produk Anda memiliki stok yang cukup (>= 2).", {
+        x: 120,
+        y: yPosition,
+        size: 10,
+        font: font,
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      return Buffer.from(pdfBytes);
+    }
+
+    // Table Header (TANPA Rating)
+    const colWidths = [40, 200, 80, 100, 100];
+    const headers = ["No", "Nama Produk", "Stok", "Harga (Rp)", "Kategori"];
+    let currentX = 50;
+
+    headers.forEach((header, i) => {
+      page.drawText(header, {
+        x: currentX,
+        y: yPosition,
+        size: 10,
+        font: fontBold,
+      });
+      currentX += colWidths[i];
     });
 
-  doc.end();
-
-  return new Promise((resolve, reject) => {
-    doc.on("end", () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      resolve(pdfBuffer);
+    page.drawLine({
+      start: { x: 50, y: yPosition - 5 },
+      end: { x: 530, y: yPosition - 5 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
     });
-    doc.on("error", reject);
-  });
+
+    yPosition -= 20;
+
+    // Table Body
+    (products as ProductLowStockData[]).forEach((product, index) => {
+      if (yPosition < 50) {
+        page = pdfDoc.addPage([595, 842]);
+        yPosition = height - 50;
+      }
+
+      // Highlight background for low stock
+      if (product.stock === 0) {
+        page.drawRectangle({
+          x: 50,
+          y: yPosition - 2,
+          width: 480,
+          height: 18,
+          color: rgb(1, 0.9, 0.9),
+        });
+      } else if (product.stock === 1) {
+        page.drawRectangle({
+          x: 50,
+          y: yPosition - 2,
+          width: 480,
+          height: 18,
+          color: rgb(1, 0.95, 0.9),
+        });
+      }
+
+      currentX = 50;
+
+      // No
+      page.drawText((index + 1).toString(), {
+        x: currentX + 15,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+      currentX += colWidths[0];
+
+      // Nama Produk
+      const productName = product.name || "-";
+      const truncatedName =
+        productName.length > 35
+          ? productName.substring(0, 32) + "..."
+          : productName;
+      page.drawText(truncatedName, {
+        x: currentX,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+      currentX += colWidths[1];
+
+      // Stok (with red color if 0)
+      const stockColor =
+        product.stock === 0
+          ? rgb(1, 0, 0)
+          : product.stock === 1
+          ? rgb(1, 0.4, 0)
+          : rgb(0, 0, 0);
+      page.drawText(product.stock?.toString() || "0", {
+        x: currentX + 30,
+        y: yPosition,
+        size: 9,
+        font: fontBold,
+        color: stockColor,
+      });
+      currentX += colWidths[2];
+
+      // Harga
+      page.drawText(
+        product.price ? product.price.toLocaleString("id-ID") : "0",
+        {
+          x: currentX,
+          y: yPosition,
+          size: 9,
+          font: font,
+        }
+      );
+      currentX += colWidths[3];
+
+      // Kategori
+      const category = product.category || "-";
+      const truncatedCategory =
+        category.length > 18 ? category.substring(0, 15) + "..." : category;
+      page.drawText(truncatedCategory, {
+        x: currentX,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+
+      yPosition -= 20;
+    });
+
+    // Legend
+    yPosition -= 10;
+    page.drawText("Keterangan:", { x: 50, y: yPosition, size: 8, font: font });
+    yPosition -= 12;
+    page.drawRectangle({
+      x: 50,
+      y: yPosition,
+      width: 15,
+      height: 10,
+      color: rgb(1, 0.9, 0.9),
+    });
+    page.drawText("= Stok Habis (0)", {
+      x: 70,
+      y: yPosition + 2,
+      size: 8,
+      font: font,
+    });
+    yPosition -= 15;
+    page.drawRectangle({
+      x: 50,
+      y: yPosition,
+      width: 15,
+      height: 10,
+      color: rgb(1, 0.95, 0.9),
+    });
+    page.drawText("= Stok Kritis (1)", {
+      x: 70,
+      y: yPosition + 2,
+      size: 8,
+      font: font,
+    });
+
+    // Footer
+    page.drawText("Laporan ini menampilkan produk yang perlu segera dipesan", {
+      x: 120,
+      y: 40,
+      size: 8,
+      font: font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    page.drawText("Laporan digenerate otomatis oleh sistem Warungpedia", {
+      x: 130,
+      y: 30,
+      size: 8,
+      font: font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    return Buffer.from(pdfBytes);
+  } catch (error) {
+    console.error("❌ [PDF-MENIPIS] Error:", error);
+    throw error;
+  }
 }

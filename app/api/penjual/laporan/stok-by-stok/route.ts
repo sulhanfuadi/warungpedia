@@ -10,51 +10,70 @@ function getBearerToken(req: NextRequest): string | null {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("🔵 [STOK-BY-STOK] Starting request...");
+
     // Auth check
     const token = getBearerToken(request);
     if (!token) {
+      console.log("❌ [STOK-BY-STOK] No token found");
       return NextResponse.json(
         { error: "Unauthorized - Token tidak ditemukan" },
         { status: 401 }
       );
     }
 
+    console.log("🔵 [STOK-BY-STOK] Token found, verifying...");
+
     // ✅ VERIFY TOKEN dengan Supabase Admin
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.getUser(token);
 
     if (authError || !authUser?.user) {
-      console.error("❌ Auth Error:", authError);
+      console.error("❌ [STOK-BY-STOK] Auth Error:", authError);
       return NextResponse.json(
         { error: "Unauthorized - Token tidak valid" },
         { status: 401 }
       );
     }
 
+    console.log("✅ [STOK-BY-STOK] Token verified for user:", authUser.user.id);
+
     // Get sellerId from query params
     const { searchParams } = new URL(request.url);
     const sellerId = searchParams.get("sellerId");
 
     if (!sellerId) {
+      console.log("❌ [STOK-BY-STOK] No sellerId in query");
       return NextResponse.json(
         { error: "sellerId query parameter wajib diisi" },
         { status: 400 }
       );
     }
 
+    console.log("🔵 [STOK-BY-STOK] Seller ID:", sellerId);
+
     // ✅ VALIDASI: Pastikan sellerId yang diminta = user yang login
     if (authUser.user.id !== sellerId) {
+      console.log("❌ [STOK-BY-STOK] User ID mismatch");
       return NextResponse.json(
         { error: "Forbidden - Anda hanya bisa download laporan sendiri" },
         { status: 403 }
       );
     }
 
+    console.log("🔵 [STOK-BY-STOK] Generating PDF...");
+
     // Generate PDF
     const pdfBuffer = await generateStokByStokPDF(sellerId);
 
+    console.log(
+      "✅ [STOK-BY-STOK] PDF generated, size:",
+      pdfBuffer.length,
+      "bytes"
+    );
+
     // Return PDF response
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
@@ -62,9 +81,22 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Error generating stok report:", error);
+    console.error("❌ [STOK-BY-STOK] FATAL ERROR:");
+    console.error("Error object:", error);
+    console.error(
+      "Error message:",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack"
+    );
+
     return NextResponse.json(
-      { error: "Gagal menghasilkan laporan PDF" },
+      {
+        error: "Gagal menghasilkan laporan PDF",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

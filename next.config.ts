@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  turbopack: {},
+  experimental: {
+    serverComponentsExternalPackages: ["pdfkit"],
+  },
 };
 
 export default nextConfig;

@@ -1,4 +1,4 @@
-import PDFDocument from "pdfkit";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 interface ProductStokData {
@@ -7,154 +7,198 @@ interface ProductStokData {
   stock: number;
   price: number;
   category: string;
-  average_rating: number | null;
 }
 
 export async function generateStokByStokPDF(sellerId: string): Promise<Buffer> {
-  // Query data produk (urut stok menurun)
-  const { data: products, error } = await supabaseAdmin
-    .from("products")
-    .select("id, name, stock, price, category, average_rating")
-    .eq("seller_id", sellerId)
-    .order("stock", { ascending: false });
+  try {
+    console.log("📄 [PDF-GEN] Starting generateStokByStokPDF for:", sellerId);
 
-  if (error) {
-    console.error("Error fetching products:", error);
-    throw new Error("Gagal mengambil data produk");
-  }
+    // Query data produk (urut stok menurun) - TANPA average_rating
+    const { data: products, error } = await supabaseAdmin
+      .from("products")
+      .select("id, name, stock, price, category")
+      .eq("seller_id", sellerId)
+      .order("stock", { ascending: false });
 
-  // Create PDF document
-  const doc = new PDFDocument({ margin: 50 });
-  const buffers: Buffer[] = [];
-
-  doc.on("data", buffers.push.bind(buffers));
-
-  // Header
-  doc
-    .fontSize(20)
-    .font("Helvetica-Bold")
-    .text("LAPORAN STOK PRODUK", { align: "center" })
-    .fontSize(12)
-    .font("Helvetica")
-    .text("(Diurutkan Berdasarkan Stok - Menurun)", { align: "center" })
-    .moveDown();
-
-  doc
-    .fontSize(10)
-    .text(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`)
-    .text(`Seller ID: ${sellerId}`)
-    .moveDown();
-
-  // Table Header
-  const startY = doc.y;
-  const colWidths = [40, 180, 60, 80, 80, 60];
-  const headers = [
-    "No",
-    "Nama Produk",
-    "Stok",
-    "Harga (Rp)",
-    "Kategori",
-    "Rating",
-  ];
-
-  let currentX = 50;
-  doc.fontSize(10).font("Helvetica-Bold");
-
-  headers.forEach((header, i) => {
-    doc.text(header, currentX, startY, {
-      width: colWidths[i],
-      align: i === 0 ? "center" : "left",
-    });
-    currentX += colWidths[i];
-  });
-
-  doc
-    .moveTo(50, startY + 15)
-    .lineTo(550, startY + 15)
-    .stroke();
-
-  // Table Body
-  doc.font("Helvetica").fontSize(9);
-  let yPosition = startY + 20;
-
-  (products as ProductStokData[]).forEach((product, index) => {
-    // Check for page break
-    if (yPosition > 700) {
-      doc.addPage();
-      yPosition = 50;
+    if (error) {
+      console.error("❌ [PDF-GEN] Database error:", error);
+      throw new Error(`Gagal mengambil data produk: ${error.message}`);
     }
 
-    currentX = 50;
+    console.log("✅ [PDF-GEN] Products fetched:", products?.length || 0);
 
-    // No
-    doc.text((index + 1).toString(), currentX, yPosition, {
-      width: colWidths[0],
-      align: "center",
+    // Create PDF document
+    console.log("📄 [PDF-GEN] Creating PDF document...");
+    const pdfDoc = await PDFDocument.create();
+
+    console.log("📄 [PDF-GEN] Embedding fonts...");
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    console.log("📄 [PDF-GEN] Adding page...");
+    let page = pdfDoc.addPage([595, 842]); // A4 size
+    const { height } = page.getSize();
+    let yPosition = height - 50;
+
+    console.log("📄 [PDF-GEN] Drawing content...");
+
+    // Header
+    page.drawText("LAPORAN STOK PRODUK", {
+      x: 50,
+      y: yPosition,
+      size: 20,
+      font: fontBold,
+      color: rgb(0, 0, 0),
     });
-    currentX += colWidths[0];
+    yPosition -= 25;
 
-    // Nama Produk (wrap text)
-    doc.text(product.name || "-", currentX, yPosition, {
-      width: colWidths[1],
-      align: "left",
+    page.drawText("(Diurutkan Berdasarkan Stok - Menurun)", {
+      x: 50,
+      y: yPosition,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
     });
-    currentX += colWidths[1];
+    yPosition -= 30;
 
-    // Stok
-    doc.text(product.stock?.toString() || "0", currentX, yPosition, {
-      width: colWidths[2],
-      align: "right",
+    page.drawText(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
     });
-    currentX += colWidths[2];
+    yPosition -= 15;
 
-    // Harga
-    doc.text(
-      product.price ? product.price.toLocaleString("id-ID") : "0",
-      currentX,
-      yPosition,
-      {
-        width: colWidths[3],
-        align: "right",
+    page.drawText(`Seller ID: ${sellerId}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
+    });
+    yPosition -= 15;
+
+    page.drawText(`Total Produk: ${products?.length || 0}`, {
+      x: 50,
+      y: yPosition,
+      size: 10,
+      font: font,
+    });
+    yPosition -= 30;
+
+    // Table Header (TANPA Rating)
+    const colWidths = [40, 200, 80, 100, 100];
+    const headers = ["No", "Nama Produk", "Stok", "Harga (Rp)", "Kategori"];
+    let currentX = 50;
+
+    headers.forEach((header, i) => {
+      page.drawText(header, {
+        x: currentX,
+        y: yPosition,
+        size: 10,
+        font: fontBold,
+      });
+      currentX += colWidths[i];
+    });
+
+    // Draw line under header
+    page.drawLine({
+      start: { x: 50, y: yPosition - 5 },
+      end: { x: 530, y: yPosition - 5 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    yPosition -= 20;
+
+    console.log("📄 [PDF-GEN] Drawing products...");
+
+    // Table Body
+    (products as ProductStokData[]).forEach((product, index) => {
+      // Check for page break
+      if (yPosition < 50) {
+        page = pdfDoc.addPage([595, 842]);
+        yPosition = height - 50;
       }
-    );
-    currentX += colWidths[3];
 
-    // Kategori
-    doc.text(product.category || "-", currentX, yPosition, {
-      width: colWidths[4],
-      align: "left",
+      currentX = 50;
+
+      // No
+      page.drawText((index + 1).toString(), {
+        x: currentX + 15,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+      currentX += colWidths[0];
+
+      // Nama Produk
+      const productName = product.name || "-";
+      const truncatedName =
+        productName.length > 35
+          ? productName.substring(0, 32) + "..."
+          : productName;
+      page.drawText(truncatedName, {
+        x: currentX,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+      currentX += colWidths[1];
+
+      // Stok
+      page.drawText(product.stock?.toString() || "0", {
+        x: currentX + 30,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+      currentX += colWidths[2];
+
+      // Harga
+      page.drawText(
+        product.price ? product.price.toLocaleString("id-ID") : "0",
+        {
+          x: currentX,
+          y: yPosition,
+          size: 9,
+          font: font,
+        }
+      );
+      currentX += colWidths[3];
+
+      // Kategori
+      const category = product.category || "-";
+      const truncatedCategory =
+        category.length > 18 ? category.substring(0, 15) + "..." : category;
+      page.drawText(truncatedCategory, {
+        x: currentX,
+        y: yPosition,
+        size: 9,
+        font: font,
+      });
+
+      yPosition -= 20;
     });
-    currentX += colWidths[4];
 
-    // Rating
-    doc.text(
-      product.average_rating ? product.average_rating.toFixed(1) : "0.0",
-      currentX,
-      yPosition,
-      {
-        width: colWidths[5],
-        align: "center",
-      }
-    );
-
-    yPosition += 20;
-  });
-
-  // Footer
-  doc
-    .moveDown(2)
-    .fontSize(8)
-    .text("Laporan ini digenerate otomatis oleh sistem Warungpedia", {
-      align: "center",
+    // Footer
+    page.drawText("Laporan ini digenerate otomatis oleh sistem Warungpedia", {
+      x: 120,
+      y: 30,
+      size: 8,
+      font: font,
+      color: rgb(0.5, 0.5, 0.5),
     });
 
-  doc.end();
+    console.log("📄 [PDF-GEN] Saving PDF...");
+    const pdfBytes = await pdfDoc.save();
 
-  return new Promise((resolve, reject) => {
-    doc.on("end", () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      resolve(pdfBuffer);
-    });
-    doc.on("error", reject);
-  });
+    console.log("✅ [PDF-GEN] PDF saved successfully, size:", pdfBytes.length);
+
+    return Buffer.from(pdfBytes);
+  } catch (error) {
+    console.error("❌ [PDF-GEN] Error in generateStokByStokPDF:");
+    console.error("Error:", error);
+    console.error("Stack:", error instanceof Error ? error.stack : "No stack");
+    throw error;
+  }
 }
