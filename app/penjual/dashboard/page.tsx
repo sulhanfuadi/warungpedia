@@ -46,7 +46,6 @@ export default function SellerDashboardPage() {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
-      // ✅ DEBUG: Cek session
       console.log("🔍 Session Debug:", {
         hasSession: !!session.data.session,
         hasToken: !!token,
@@ -85,6 +84,69 @@ export default function SellerDashboardPage() {
       window.URL.revokeObjectURL(url);
 
       alert("✅ Laporan berhasil didownload!");
+    } catch (err) {
+      console.error("❌ Error Detail:", err);
+      alert(
+        `❌ Error: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ✅ NEW HANDLER: Download Laporan Stok Menipis
+  const handleDownloadStokMenipis = async () => {
+    if (!activeSellerId.trim()) {
+      alert("⚠️ Masukkan Seller ID terlebih dahulu");
+      return;
+    }
+
+    setIsDownloading(true);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      console.log("🔍 Session Debug (Stok Menipis):", {
+        hasSession: !!session.data.session,
+        hasToken: !!token,
+        userId: session.data.session?.user?.id,
+      });
+
+      if (!token) {
+        alert("⚠️ Anda harus login terlebih dahulu");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/penjual/laporan/stok-menipis?sellerId=${encodeURIComponent(
+          activeSellerId
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Gagal download laporan stok menipis"
+        );
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan_Stok_Menipis_${activeSellerId}_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      alert("✅ Laporan stok menipis berhasil didownload!");
     } catch (err) {
       console.error("❌ Error Detail:", err);
       alert(
@@ -153,6 +215,21 @@ export default function SellerDashboardPage() {
                   {isDownloading
                     ? "⏳ Generating..."
                     : "📥 Download Laporan Stok (Urut Stok)"}
+                </button>
+
+                {/* ✅ NEW BUTTON: Laporan Stok Menipis */}
+                <button
+                  onClick={handleDownloadStokMenipis}
+                  disabled={isDownloading}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition ${
+                    isDownloading
+                      ? "cursor-not-allowed bg-gray-600"
+                      : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  {isDownloading
+                    ? "⏳ Generating..."
+                    : "⚠️ Download Laporan Stok Menipis (< 2)"}
                 </button>
               </div>
             </div>
