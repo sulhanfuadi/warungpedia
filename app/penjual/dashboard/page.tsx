@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SellerDashboardCharts from "@/components/penjual/SellerDashboardCharts";
@@ -9,8 +8,8 @@ import Logo from "@/components/ui/Logo";
 type SessionUser = {
   id: string;
   email: string | null;
-  user_metadata?: Record<string, unknown>;
-  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, any>;
+  app_metadata?: Record<string, any>;
 };
 
 const getRole = (user?: SessionUser | null) =>
@@ -19,7 +18,6 @@ const getRole = (user?: SessionUser | null) =>
 
 export default function SellerDashboardPage() {
   const router = useRouter();
-
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +28,7 @@ export default function SellerDashboardPage() {
 
     const checkSession = async () => {
       const { data, error: sessionError } = await supabase.auth.getSession();
+
       if (sessionError) {
         setError("Gagal memeriksa sesi. Coba lagi.");
         setAuthChecking(false);
@@ -54,6 +53,7 @@ export default function SellerDashboardPage() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const role = getRole(session?.user as SessionUser);
+
       if (!session || event === "SIGNED_OUT" || role !== "seller") {
         router.replace("/penjual/login");
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
@@ -65,7 +65,7 @@ export default function SellerDashboardPage() {
       mounted = false;
       listener?.subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [router]);
 
   const handleDownloadStokByStok = async () => {
     if (!user?.id) {
@@ -79,6 +79,13 @@ export default function SellerDashboardPage() {
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
+
+      console.log("🔍 Session Debug:", {
+        hasSession: !!session.data.session,
+        hasToken: !!token,
+        userId: session.data.session?.user?.id,
+      });
+
       if (!token) {
         setError("Token tidak ditemukan. Silakan login ulang.");
         return;
@@ -88,7 +95,7 @@ export default function SellerDashboardPage() {
         `/api/penjual/laporan/stok-by-stok?sellerId=${encodeURIComponent(user.id)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        },
+        }
       );
 
       if (!response.ok) {
@@ -112,32 +119,81 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleDownloadStokMenipis = async () => {
+    if (!user?.id) {
+      setError("Session tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      console.log("🔍 Session Debug (Stok Menipis):", {
+        hasSession: !!session.data.session,
+        hasToken: !!token,
+        userId: session.data.session?.user?.id,
+      });
+
+      if (!token) {
+        setError("Token tidak ditemukan. Silakan login ulang.");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/penjual/laporan/stok-menipis?sellerId=${encodeURIComponent(user.id)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal download laporan stok menipis");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan_Stok_Menipis_${user.id}_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-[#0c0c0f] text-white flex items-center justify-center">
-        Memeriksa sesi...
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white">
+        <div className="text-center">
+          <Logo />
+          <p className="mt-4">Memeriksa sesi...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f] text-white">
-      <header className="border-b border-[#1f1f1f] bg-[#060608]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Logo size="sm" variant="white" showText href="/" />
-          <div className="flex items-center gap-3 text-sm text-gray-300">
-            <a
-              href="/penjual/dashboard"
-              className="rounded-lg border border-[#2a2a2a] px-3 py-2 font-semibold hover:border-[#0779FF]"
-            >
-              Dashboard
-            </a>
-            <a
-              href="/penjual/upload-produk"
-              className="rounded-lg border border-[#2a2a2a] px-3 py-2 font-semibold hover:border-[#0779FF]"
+    <div className="min-h-screen bg-[#0a0a0a] p-6 text-white">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <div className="flex gap-4">
+            <button
+              onClick={() => router.push("/penjual/upload")}
+              className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-blue-500 hover:text-blue-300"
             >
               Upload Produk
-            </a>
+            </button>
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -149,45 +205,49 @@ export default function SellerDashboardPage() {
             </button>
           </div>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8 space-y-6">
-        <section className="rounded-2xl border border-[#1f1f1f] bg-[#11111a] p-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm text-gray-400">Seller ID</p>
-              <p className="text-lg font-semibold">{user?.id}</p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
-            </div>
+        <div className="mb-6 rounded-lg border border-[#2a2a2a] bg-[#111111] p-4">
+          <h2 className="mb-2 text-lg font-semibold">Seller ID</h2>
+          <p className="font-mono text-sm text-gray-400">{user?.id}</p>
+          <p className="mt-1 text-sm text-gray-500">{user?.email}</p>
+        </div>
+
+        {user?.id && (
+          <div className="mb-6 rounded-lg border border-[#2a2a2a] bg-[#111111] p-4">
+            <h2 className="mb-4 text-lg font-semibold">📊 Laporan Penjual</h2>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={handleDownloadStokByStok}
                 disabled={isDownloading}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition ${
-                  isDownloading ? "cursor-not-allowed bg-gray-600" : "bg-[#0779FF] hover:bg-[#0563cc]"
-                }`}
+                className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-green-500 hover:text-green-300 disabled:opacity-50"
               >
-                {isDownloading ? "Mengunduh..." : "Download Laporan Stok"}
+                {isDownloading ? "⏳ Generating..." : "📥 Download Laporan Stok (Urut Stok)"}
+              </button>
+              <button
+                onClick={handleDownloadStokMenipis}
+                disabled={isDownloading}
+                className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-yellow-500 hover:text-yellow-300 disabled:opacity-50"
+              >
+                {isDownloading ? "⏳ Generating..." : "⚠️ Download Laporan Stok Menipis (< 2)"}
               </button>
             </div>
           </div>
-          {error && (
-            <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-        </section>
+        )}
 
-        <section>
-          {user?.id ? (
-            <SellerDashboardCharts sellerId={user.id} />
-          ) : (
-            <p className="rounded-2xl border border-[#1f1f1f] bg-[#11111a] p-6 text-sm text-gray-400">
-              Sesi tidak ditemukan. Silakan login ulang.
-            </p>
-          )}
-        </section>
-      </main>
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-500 bg-red-500/10 p-4 text-red-300">
+            {error}
+          </div>
+        )}
+
+        {user?.id ? (
+          <SellerDashboardCharts sellerId={user.id} />
+        ) : (
+          <div className="rounded-lg border border-[#2a2a2a] bg-[#111111] p-8 text-center">
+            Sesi tidak ditemukan. Silakan login ulang.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
