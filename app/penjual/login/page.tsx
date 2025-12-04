@@ -40,26 +40,28 @@ export default function SellerLoginPage() {
     supabase.auth.getSession().then(({ data }) => {
       const { role, email } = extractRole(data.session);
       if (data.session && role === "seller") {
-        router.replace("/penjual/upload-produk");
+        router.replace("/penjual/dashboard");
         return;
       }
-      if (data.session && (role === "admin" || (email && adminEmails.includes(email)))) {
-        supabase.auth.signOut();
-        if (active) setInfo("Anda sebelumnya login sebagai admin. Silakan login sebagai seller.");
+      if (active) {
+        if (data.session && (role === "admin" || (email && adminEmails.includes(email)))) {
+          setInfo("Anda login sebagai admin. Silakan gunakan akun seller.");
+        }
+        setAuthChecking(false);
       }
-      if (active) setAuthChecking(false);
+    }).catch(() => {
+      setAuthChecking(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const { role, email } = extractRole({ user: session?.user });
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         if (role === "seller") {
-          router.replace("/penjual/upload-produk");
+          router.replace("/penjual/dashboard");
         } else if (role === "admin" || (email && adminEmails.includes(email))) {
-          supabase.auth.signOut();
           setError("Akun ini admin, bukan seller.");
         } else {
-          router.replace("/penjual/upload-produk");
+          setError("Akun ini bukan seller.");
         }
       }
     });
@@ -98,7 +100,7 @@ export default function SellerLoginPage() {
         throw new Error("Akun ini bukan seller. Gunakan akun penjual untuk login.");
       }
 
-      router.replace("/penjual/upload-produk");
+      router.replace("/penjual/dashboard");
     } catch (err) {
       setError(
         err instanceof Error
