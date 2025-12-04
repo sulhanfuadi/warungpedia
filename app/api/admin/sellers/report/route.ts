@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
         pic_name: seller.pic_name,
         pic_email: seller.pic_email,
         pic_city: seller.pic_city,
+        pic_province: seller.pic_province,
         status: seller.status,
         created_at: seller.created_at,
       })),
