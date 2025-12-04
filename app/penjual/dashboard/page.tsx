@@ -197,7 +197,7 @@ export default function SellerDashboardPage() {
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <div className="flex gap-4">
             <button
-              onClick={() => router.push("/penjual/upload")}
+              onClick={() => router.push("/penjual/upload-produk")}
               className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-blue-500 hover:text-blue-300"
             >
               Upload Produk
