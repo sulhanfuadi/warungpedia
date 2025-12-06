@@ -203,6 +203,12 @@ export default function SellerDashboardPage() {
               Upload Produk
             </button>
             <button
+              onClick={() => router.push("/penjual/laporan-stok")}
+              className="rounded-lg border border-[#2a2a2a] px-4 py-2 font-semibold hover:border-blue-500 hover:text-blue-300"
+            >
+              Laporan Stok
+            </button>
+            <button
               onClick={async () => {
                 await supabase.auth.signOut();
                 router.replace("/penjual/login");
