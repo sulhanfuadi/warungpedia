@@ -132,6 +132,12 @@ export default function AdminDashboardPage() {
             >
               Kelola Seller
             </a>
+            <a
+              href="/admin/products/report"
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-[#0779FF]"
+            >
+              Laporan Produk
+            </a>
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
