@@ -45,7 +45,7 @@ const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
     supabase.auth.getSession().then(({ data }) => {
       const role = inferRole(data.session);
       if (!data.session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       if (active) {
@@ -59,7 +59,7 @@ const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
         (session?.user.user_metadata as Record<string, unknown>)?.role ||
         (session?.user.app_metadata as Record<string, unknown>)?.role;
       if (event === "SIGNED_OUT" || !session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
       }
     });
 

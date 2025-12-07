@@ -39,7 +39,7 @@ export default function SellerDashboardPage() {
       const role = getRole(session?.user as SessionUser);
 
       if (!session || role !== "seller") {
-        router.replace("/penjual/login");
+        router.replace("/login");
         return;
       }
 
@@ -56,7 +56,7 @@ export default function SellerDashboardPage() {
         const role = getRole(session?.user as SessionUser);
 
         if (!session || event === "SIGNED_OUT" || role !== "seller") {
-          router.replace("/penjual/login");
+          router.replace("/login");
         } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
           setUser(session.user as SessionUser);
         }
@@ -211,7 +211,7 @@ export default function SellerDashboardPage() {
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.replace("/penjual/login");
+                router.replace("/login");
               }}
               className="rounded-lg border border-[#2a2a2a] px-3 py-2 font-semibold hover:border-red-500 hover:text-red-300"
             >
