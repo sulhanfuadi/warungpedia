@@ -49,7 +49,7 @@ export default function ProductsReportPage() {
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       const role = inferRole(data.session);
       if (!data.session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       if (active) {
@@ -63,7 +63,7 @@ export default function ProductsReportPage() {
         (session?.user?.user_metadata as Record<string, unknown> | undefined)?.role ||
         (session?.user?.app_metadata as Record<string, unknown> | undefined)?.role;
       if (_event === "SIGNED_OUT" || !session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
       }
     });
 
@@ -211,7 +211,7 @@ export default function ProductsReportPage() {
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.replace("/admin/login");
+                router.replace("/login");
               }}
               className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300"
             >

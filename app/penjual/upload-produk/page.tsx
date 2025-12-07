@@ -56,18 +56,18 @@ export default function UploadProdukPage() {
           process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
         ];
         if (!data.session) {
-          router.replace("/penjual/login");
+          router.replace("/login");
           return;
         }
         if (role === "admin" || (email && adminEmails.includes(email))) {
           supabase.auth.signOut();
-          router.replace("/penjual/login");
+          router.replace("/login");
           return;
         }
         if (active) setSellerId(data.session.user?.id ?? null);
       })
       .catch(() => {
-        if (active) router.replace("/penjual/login");
+        if (active) router.replace("/login");
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -81,14 +81,14 @@ export default function UploadProdukPage() {
         ];
         if (role === "admin" || (email && adminEmails.includes(email))) {
           supabase.auth.signOut();
-          router.replace("/penjual/login");
+          router.replace("/login");
           return;
         }
         setSellerId(session?.user?.id ?? null);
       }
       if (event === "SIGNED_OUT") {
         setSellerId(null);
-        router.replace("/penjual/login");
+        router.replace("/login");
       }
     });
 
@@ -291,9 +291,15 @@ export default function UploadProdukPage() {
           <div className="flex items-center gap-3 text-sm text-gray-400">
             <span>Upload Produk</span>
             <button
+              onClick={() => router.push("/penjual/dashboard")}
+              className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-[#0779FF] hover:text-[#0779FF]"
+            >
+              Kembali ke Dashboard
+            </button>
+            <button
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.replace("/penjual/login");
+                router.replace("/login");
               }}
               className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-red-500 hover:text-red-300"
             >

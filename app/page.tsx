@@ -74,10 +74,10 @@ export default function HomePage() {
               Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau lokasi
             </span>
             <Link
-              href="/penjual/login"
+              href="/login"
               className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-[#0779FF] hover:text-[#0779FF]"
             >
-              Login Penjual
+              Login
             </Link>
           </div>
         </div>

@@ -57,7 +57,7 @@ export default function AdminSellersPage() {
     supabase.auth.getSession().then(({ data }) => {
       const role = inferRole(data.session);
       if (!data.session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       if (active) {
@@ -71,7 +71,7 @@ export default function AdminSellersPage() {
         (session?.user.user_metadata as Record<string, unknown>)?.role ||
         (session?.user.app_metadata as Record<string, unknown>)?.role;
       if (event === "SIGNED_OUT" || !session || role !== "admin") {
-        router.replace("/admin/login");
+        router.replace("/login");
       }
     });
 
