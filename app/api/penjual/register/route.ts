@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function validateRegistrationData(formData: FormData) {
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
       const testBlob = new Blob(["test"], { type: "text/plain" });
       const testPath = `_test_${Date.now()}.txt`;
 
-      const { data: testUpload, error: testError } = await supabaseAdmin.storage
+      const { error: testError } = await supabaseAdmin.storage
         .from("seller-uploads")
         .upload(testPath, testBlob, { upsert: false });
 
@@ -290,6 +289,7 @@ export async function POST(request: NextRequest) {
     const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
       type: "signup",
       email: picEmail,
+      password,
       options: {
         redirectTo: `${
           process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"

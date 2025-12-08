@@ -79,7 +79,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
   console.log("─".repeat(60));
 
   try {
-    const { data, error } = await supabase.storage.listBuckets();
+    const { error } = await supabase.storage.listBuckets();
 
     if (error) {
       console.error("❌ Storage Error:", error.message);

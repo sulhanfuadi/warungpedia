@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Logo from "@/components/ui/Logo";
 
 interface Seller {
@@ -18,11 +18,7 @@ export default function ManageSellersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
-  useEffect(() => {
-    fetchSellers();
-  }, [filter]);
-
-  const fetchSellers = async () => {
+  const fetchSellers = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/admin/sellers?status=${filter === "ALL" ? "ALL" : filter}`
@@ -39,7 +35,11 @@ export default function ManageSellersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchSellers();
+  }, [fetchSellers]);
 
   const handleToggleStatus = async (seller: Seller) => {
     const action = seller.status === "ACTIVE" ? "suspend" : "reactivate";

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import { ProductFeedbackSection } from "@/components/products/ProductFeedbackSection";
 import { useParams } from "next/navigation";
 
 type Product = {
@@ -372,32 +373,7 @@ export default function ProductDetailPage() {
       </main>
 
       <section className="mx-auto mt-6 max-w-6xl px-6 pb-10">
-        <div className="rounded-2xl border border-[#2f2f2f] bg-[#121212] p-5 shadow-lg">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Ulasan Pembeli</h3>
-            <span className="text-sm text-gray-400">⭐ {ratingText}</span>
-          </div>
-          <div className="mt-4 space-y-4">
-            <div className="rounded-xl border border-[#2f2f2f] bg-[#1a1a1a] p-4">
-              <div className="flex items-center justify-between text-sm text-gray-300">
-                <span className="font-semibold">Pengguna A</span>
-                <span>⭐ 5.0</span>
-              </div>
-              <p className="mt-2 text-sm text-gray-300">
-                Produk sesuai deskripsi, pengiriman cepat. Kopinya enak!
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#2f2f2f] bg-[#1a1a1a] p-4">
-              <div className="flex items-center justify-between text-sm text-gray-300">
-                <span className="font-semibold">Pengguna B</span>
-                <span>⭐ 4.5</span>
-              </div>
-              <p className="mt-2 text-sm text-gray-300">
-                Varian sesuai pilihan, kemasan rapi. Recommended.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ProductFeedbackSection productId={product.id} productName={product.name} />
       </section>
     </div>
   );

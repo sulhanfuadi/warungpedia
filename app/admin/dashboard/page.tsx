@@ -13,11 +13,13 @@ const COLORS = ["#0779FF", "#4ade80", "#facc15", "#f87171"];
 interface ProductCategory {
   category: string;
   total: number;
+  [key: string]: string | number;
 }
 
 interface StoreProvince {
   province: string;
   total: number;
+  [key: string]: string | number;
 }
 
 interface DashboardStats {
@@ -129,10 +131,10 @@ export default function AdminDashboardPage() {
                     interval={0}
                     tick={(props) => {
                       const { x, y, payload } = props;
-                      const text = payload.value.split(" ");
+                      const text = String(payload.value ?? "").split(" ");
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          {text.map((word, i) => (
+                          {text.map((word: string, i: number) => (
                             <text
                               key={i}
                               x={0}
