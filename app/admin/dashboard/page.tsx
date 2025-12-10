@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import {
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Label,
   BarChart, Bar, XAxis, YAxis,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, CartesianGrid
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -148,6 +148,41 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const totalCategoryProducts = stats.productCategories.reduce((sum, item) => sum + item.total, 0);
+  const categoryLegend = stats.productCategories.map((item, index) => ({
+    ...item,
+    color: COLORS[index % COLORS.length],
+    percentage: totalCategoryProducts ? Math.round((item.total / totalCategoryProducts) * 100) : 0,
+  }));
+
+  const formatProvinceName = (province: string) =>
+    province
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+  const wrapLabel = (label: string, maxChars = 12) => {
+    const words = label.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length <= maxChars) {
+        current = candidate;
+      } else {
+        if (current) lines.push(current);
+        current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}…` : word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.slice(0, 2); // clamp to 2 lines to avoid overflow
+  };
+
+  const provinceData = [...stats.storesByProvince]
+    .map((item) => ({ ...item, displayName: formatProvinceName(item.province) }))
+    .sort((a, b) => b.total - a.total);
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
 
@@ -269,61 +304,127 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
           {/* PIE CHART */}
-          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
+          <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
             <h3 className="text-xl font-bold text-white mb-4">Distribusi Kategori Produk</h3>
-            <div className="h-80">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={stats.productCategories}
-                    dataKey="total"
-                    nameKey="category"
-                    outerRadius={120}
-                    fill="#8884d8"
-                  >
-                    {stats.productCategories.map((_, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333" }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-80 pt-4">
+              {categoryLegend.length ? (
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={categoryLegend}
+                      dataKey="total"
+                      nameKey="category"
+                      innerRadius={70}
+                      outerRadius={120}
+                      paddingAngle={2}
+                      strokeWidth={0}
+                    >
+                      {categoryLegend.map((item, index) => (
+                        <Cell key={`${item.category || "kategori"}-${index}`} fill={item.color} />
+                      ))}
+                      <Label
+                        position="center"
+                        content={({ viewBox }) => {
+                          if (!viewBox || typeof viewBox.cx !== "number" || typeof viewBox.cy !== "number") {
+                            return null;
+                          }
+                          const { cx, cy } = viewBox;
+                          return (
+                            <g>
+                              <text x={cx} y={cy - 8} textAnchor="middle" fill="#a3a3a3" fontSize={12}>
+                                Total Produk
+                              </text>
+                              <text x={cx} y={cy + 18} textAnchor="middle" fill="#ffffff" fontSize={24} fontWeight={700}>
+                                {totalCategoryProducts}
+                              </text>
+                            </g>
+                          );
+                        }}
+                      />
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: "#1f1f1f", border: "1px solid #333" }}
+                      labelStyle={{ color: "#f5f5f5" }}
+                      itemStyle={{ color: "#e0e0e0" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                  Belum ada data kategori.
+                </div>
+              )}
             </div>
+
+            {categoryLegend.length > 0 && (
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {categoryLegend.map((item, index) => (
+                  <div
+                    key={`${item.category || "kategori"}-${index}`}
+                    className="flex items-center justify-between rounded-xl border border-[#3a3a3a] bg-[#1a1a1a] px-4 py-3 shadow-inner"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="h-3 w-3 rounded-full" style={{ background: item.color }}></span>
+                      <p className="text-white text-sm font-medium truncate max-w-[120px]">
+                        {item.category || "Tanpa Kategori"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white text-sm font-semibold">{item.percentage}%</p>
+                      <p className="text-xs text-gray-400">{item.total} produk</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* BAR CHART */}
-          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
+          <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
             <h3 className="text-xl font-bold text-white mb-4">Penjual per Provinsi</h3>
-            <div className="h-80">
+            <div className="h-80 pt-4">
               <ResponsiveContainer>
-                <BarChart data={stats.storesByProvince}>
+                <BarChart data={provinceData} margin={{ top: 10, right: 16, left: 4, bottom: 24 }}>
+                  <defs>
+                    <linearGradient id="provinceBar" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0b8cff" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#0669dd" stopOpacity={0.95} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" vertical={false} />
                   <XAxis
-                    dataKey="province"
+                    dataKey="displayName"
                     interval={0}
+                    tickMargin={10}
                     tick={(props) => {
                       const { x, y, payload } = props;
-                      const text = payload.value.split(" ");
+                      const lines = wrapLabel(payload.value, 12);
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          {text.map((word: string, i: number) => (
+                          {lines.map((line: string, i: number) => (
                             <text
                               key={i}
                               x={0}
-                              y={i * 14}
+                              y={i * 13}
                               textAnchor="middle"
-                              fill="#ccc"
+                              fill="#d1d5db"
                               fontSize={11}
                             >
-                              {word}
+                              {line}
                             </text>
                           ))}
                         </g>
                       );
                     }}
-                  />  
-                  <YAxis stroke="#ccc" />
-                  <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333" }} />
-                  <Bar dataKey="total" fill="#0779FF" />
+                  />
+                  <YAxis stroke="#ccc" tick={{ fill: "#d1d5db", fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: "#111827", border: "1px solid #374151" }}
+                    labelStyle={{ color: "#e5e7eb" }}
+                    itemStyle={{ color: "#e5e7eb" }}
+                    formatter={(value: number, _name, entry) => [`${value} penjual`, entry.payload.displayName]}
+                  />
+                  <Bar dataKey="total" fill="url(#provinceBar)" radius={[6, 6, 0, 0]} barSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

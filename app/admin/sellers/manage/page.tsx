@@ -153,10 +153,10 @@ const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
               </div>
             </div>
             <a
-              href="/admin/sellers"
-              className="text-[#0779FF] hover:underline text-sm"
+              href="/admin/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg border border-[#3a3a3a] px-3 py-2 text-sm font-semibold text-gray-200 transition hover:border-[#0779FF] hover:text-white"
             >
-              ← Kembali ke Verifikasi
+              ← Kembali ke Dashboard
             </a>
           </div>
         </div>

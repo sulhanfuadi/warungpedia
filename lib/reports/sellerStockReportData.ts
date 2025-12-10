@@ -145,9 +145,10 @@ export async function fetchSellerStockReportData(params: {
     };
   });
 
+  // SRS-MartPlace-12: sort stok menurun, lalu nama produk asc
   mapped.sort((left, right) => {
-    if (right.rating !== left.rating) {
-      return right.rating - left.rating;
+    if (right.stock !== left.stock) {
+      return right.stock - left.stock;
     }
     return left.name.localeCompare(right.name, "id", { sensitivity: "base" });
   });

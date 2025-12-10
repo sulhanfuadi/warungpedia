@@ -243,13 +243,13 @@ export async function generateStokMenipisPDF(
       color: rgb(0.9, 0.7, 0.7),
     });
 
-    // Column definitions
+    // SRS-MartPlace-14: Kolom No | Produk | Kategori | Harga | Stock (angka)
     const colX = {
       no: 45,
       name: 75,
-      stock: 300,
-      price: 360,
-      category: 450,
+      category: 300,
+      price: 420,
+      stock: 525,
     };
 
     // Headers
@@ -260,15 +260,15 @@ export async function generateStokMenipisPDF(
       font: fontBold,
     });
 
-    page.drawText("Nama Produk", {
+    page.drawText("Produk", {
       x: colX.name,
       y: tableTop - 13,
       size: 9,
       font: fontBold,
     });
 
-    page.drawText("Stok", {
-      x: colX.stock,
+    page.drawText("Kategori", {
+      x: colX.category,
       y: tableTop - 13,
       size: 9,
       font: fontBold,
@@ -281,8 +281,8 @@ export async function generateStokMenipisPDF(
       font: fontBold,
     });
 
-    page.drawText("Kategori", {
-      x: colX.category,
+    page.drawText("Stock", {
+      x: colX.stock,
       y: tableTop - 13,
       size: 9,
       font: fontBold,
@@ -334,14 +334,14 @@ export async function generateStokMenipisPDF(
           size: 9,
           font: fontBold,
         });
-        page.drawText("Nama Produk", {
+        page.drawText("Produk", {
           x: colX.name,
           y: yPosition - 13,
           size: 9,
           font: fontBold,
         });
-        page.drawText("Stok", {
-          x: colX.stock,
+        page.drawText("Kategori", {
+          x: colX.category,
           y: yPosition - 13,
           size: 9,
           font: fontBold,
@@ -352,8 +352,8 @@ export async function generateStokMenipisPDF(
           size: 9,
           font: fontBold,
         });
-        page.drawText("Kategori", {
-          x: colX.category,
+        page.drawText("Stock", {
+          x: colX.stock,
           y: yPosition - 13,
           size: 9,
           font: fontBold,
@@ -397,26 +397,15 @@ export async function generateStokMenipisPDF(
         font: font,
       });
 
-      // Stock dengan label status
-      const stockText =
-        product.stock === 0
-          ? "HABIS"
-          : product.stock === 1
-          ? "KRITIS"
-          : product.stock.toString();
-      const stockColor =
-        product.stock === 0
-          ? rgb(0.8, 0, 0)
-          : product.stock === 1
-          ? rgb(0.8, 0.4, 0)
-          : rgb(0, 0, 0);
-
-      page.drawText(stockText, {
-        x: colX.stock,
+      const category =
+        product.category.length > 18
+          ? product.category.substring(0, 15) + "..."
+          : product.category;
+      page.drawText(category, {
+        x: colX.category,
         y: yPosition - 13,
         size: 8,
-        font: fontBold,
-        color: stockColor,
+        font: font,
       });
 
       page.drawText((product.price || 0).toLocaleString("id-ID"), {
@@ -426,15 +415,20 @@ export async function generateStokMenipisPDF(
         font: font,
       });
 
-      const category =
-        product.category.length > 12
-          ? product.category.substring(0, 9) + "..."
-          : product.category;
-      page.drawText(category, {
-        x: colX.category,
+      // SRS-MartPlace-14: kolom Stock wajib angka, pakai warna untuk menandai kritis/habis
+      const stockColor =
+        product.stock === 0
+          ? rgb(0.8, 0, 0)
+          : product.stock === 1
+          ? rgb(0.8, 0.4, 0)
+          : rgb(0, 0, 0);
+
+      page.drawText(product.stock.toString(), {
+        x: colX.stock,
         y: yPosition - 13,
         size: 8,
-        font: font,
+        font: fontBold,
+        color: stockColor,
       });
 
       yPosition -= rowHeight;

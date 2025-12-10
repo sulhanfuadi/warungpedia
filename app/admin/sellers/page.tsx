@@ -198,6 +198,14 @@ export default function AdminSellersPage() {
                 </p>
               </div>
             </div>
+            <nav className="flex items-center gap-2">
+              <a
+                href="/admin/dashboard"
+                className="inline-flex items-center gap-2 rounded-lg border border-[#3a3a3a] px-3 py-2 text-sm font-semibold text-gray-200 transition hover:border-[#0779FF] hover:text-white"
+              >
+                ← Kembali ke Dashboard
+              </a>
+            </nav>
           </div>
         </div>
       </header>
