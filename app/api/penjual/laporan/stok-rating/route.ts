@@ -11,6 +11,26 @@ interface ProductStockWithRating {
   created_at: string;
 }
 
+type SellerProfileRow = {
+  id: string;
+  user_id: string | null;
+  store_name: string | null;
+};
+
+type SellerProductRow = {
+  id: string;
+  name: string | null;
+  category: string | null;
+  price: number;
+  stock: number | null;
+  created_at: string;
+};
+
+type ProductFeedbackRow = {
+  product_id: string;
+  rating: number | null;
+};
+
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
@@ -58,13 +78,31 @@ export async function GET(request: NextRequest) {
 
     // Verify seller ownership
     const { data: seller, error: sellerError } = await supabaseAdmin
-      .from("sellers")
+      .from<SellerProfileRow>("sellers")
       .select("id, user_id, store_name")
-      .eq("id", sellerId)
-      .single();
+      .or(`id.eq.${sellerId},user_id.eq.${sellerId}`)
+      .limit(1)
+      .maybeSingle();
 
-    if (sellerError || !seller) {
-      console.error("❌ [Seller Stock Report] Seller not found:", sellerError);
+    const userMetadata = authUser.user.user_metadata as Record<string, unknown> | undefined;
+    const metadataSeller = userMetadata?.seller as { store_name?: string } | undefined;
+    const fallbackStoreName = metadataSeller?.store_name || (userMetadata?.store_name as string | undefined);
+
+    const resolvedSeller = seller ||
+      (sellerId === authUser.user.id
+        ? {
+            id: sellerId,
+            user_id: authUser.user.id,
+            store_name: fallbackStoreName || "Toko Saya",
+          }
+        : null);
+
+    if (sellerError && !resolvedSeller) {
+      console.error("❌ [Seller Stock Report] Seller query error:", sellerError);
+    }
+
+    if (!resolvedSeller) {
+      console.error("❌ [Seller Stock Report] Seller not found after fallback");
       return NextResponse.json(
         { error: "Seller tidak ditemukan" },
         { status: 404 }
@@ -72,7 +110,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user owns this seller profile
-    if (seller.user_id !== authUser.user.id) {
+    const ownsSellerProfile = resolvedSeller.user_id
+      ? resolvedSeller.user_id === authUser.user.id
+      : resolvedSeller.id === authUser.user.id;
+
+    if (!ownsSellerProfile) {
       console.log("❌ [Seller Stock Report] User does not own this seller profile");
       return NextResponse.json(
         { error: "Anda tidak memiliki akses ke profil penjual ini" },
@@ -80,11 +122,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("✅ [Seller Stock Report] Seller verified:", seller.store_name);
+    console.log("✅ [Seller Stock Report] Seller verified:", resolvedSeller.store_name);
 
     // Fetch all products for this seller
     const { data: products, error: productsError } = await supabaseAdmin
-      .from("products")
+      .from<SellerProductRow>("products")
       .select("id, name, category, price, stock, created_at")
       .eq("seller_id", sellerId)
       .order("created_at", { ascending: false });
@@ -107,19 +149,19 @@ export async function GET(request: NextRequest) {
         success: true,
         data: [],
         totalRecords: 0,
-        storeName: seller.store_name,
+        storeName: resolvedSeller.store_name,
         generatedAt: new Date().toISOString(),
       });
     }
 
     // Fetch ratings for each product
-    const productIds = products.map((p: any) => p.id);
+    const productIds = products.map((p) => p.id);
     const { data: feedbacks, error: feedbacksError } = await supabaseAdmin
-      .from("product_feedbacks")
+      .from<ProductFeedbackRow>("product_feedbacks")
       .select("product_id, rating")
       .in("product_id", productIds);
 
-    let processedFeedbacks = feedbacks || [];
+    let processedFeedbacks: ProductFeedbackRow[] = feedbacks || [];
     if (feedbacksError) {
       console.warn(
         "⚠️ [Seller Stock Report] Feedbacks table not available:",
@@ -134,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate average rating per product
     const ratingMap = new Map<string, { sum: number; count: number }>();
-    (processedFeedbacks || []).forEach((fb: any) => {
+    (processedFeedbacks || []).forEach((fb) => {
       if (!ratingMap.has(fb.product_id)) {
         ratingMap.set(fb.product_id, { sum: 0, count: 0 });
       }
@@ -144,14 +186,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Map products with ratings
-    const productsWithRating: ProductStockWithRating[] = products.map((p: any) => {
+    const productsWithRating: ProductStockWithRating[] = products.map((p) => {
       const ratingData = ratingMap.get(p.id);
       const avgRating =
         ratingData && ratingData.count > 0 ? ratingData.sum / ratingData.count : 0;
       return {
         id: p.id,
-        name: p.name,
-        category: p.category,
+        name: p.name ?? "",
+        category: p.category ?? "",
         price: p.price,
         stock: p.stock || 0,
         rating: Math.round(avgRating * 100) / 100,
@@ -175,7 +217,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: productsWithRating,
       totalRecords: productsWithRating.length,
-      storeName: seller.store_name,
+      storeName: resolvedSeller.store_name,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

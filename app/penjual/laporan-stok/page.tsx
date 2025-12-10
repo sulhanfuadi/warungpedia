@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import Logo from "@/components/ui/Logo";
@@ -16,6 +16,12 @@ interface ProductStock {
   created_at: string;
 }
 
+interface SellerProfileRow {
+  id: string;
+  store_name: string | null;
+  user_id?: string | null;
+}
+
 export default function SellerStockReportPage() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductStock[]>([]);
@@ -23,6 +29,55 @@ export default function SellerStockReportPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [storeName, setStoreName] = useState("");
   const [sellerId, setSellerId] = useState("");
+
+  const resolveSellerProfile = useCallback(async (session: Session | null) => {
+    if (!session?.user) return null;
+
+    const metadata = (session.user.user_metadata as Record<string, unknown> | undefined) || {};
+    const sellerFromMeta = metadata.seller as
+      | {
+          id?: string;
+          store_name?: string;
+          storeName?: string;
+        }
+      | undefined;
+
+    if (sellerFromMeta?.id) {
+      return {
+        id: sellerFromMeta.id,
+        storeName:
+          sellerFromMeta.store_name || (sellerFromMeta.storeName as string | undefined) || undefined,
+      };
+    }
+
+    const fallbackUserId = session.user.id;
+    try {
+      const { data, error } = await supabase
+        .from<SellerProfileRow>("sellers")
+        .select("id, store_name, user_id")
+        .or(`id.eq.${fallbackUserId},user_id.eq.${fallbackUserId}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("Fallback seller query failed:", error.message);
+        return null;
+      }
+
+      if (!data) {
+        console.warn("Seller profile not found for user:", fallbackUserId);
+        return null;
+      }
+
+      return {
+        id: data.id,
+        storeName: data.store_name || undefined,
+      };
+    } catch (err) {
+      console.error("Error resolving seller profile fallback:", err);
+      return null;
+    }
+  }, []);
 
   const inferRole = (session: unknown): string | undefined => {
     if (!session || typeof session !== "object") return undefined;
@@ -39,6 +94,72 @@ export default function SellerStockReportPage() {
     if (metaRole) return metaRole;
     return undefined;
   };
+
+  const fetchProducts = useCallback(async (id: string, token: string) => {
+    try {
+      const response = await fetch(`/api/penjual/laporan/stok-rating?sellerId=${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        const message = errorBody?.error || errorBody?.message || `API error: ${response.status}`;
+        console.error("Seller stock report API error", response.status, errorBody);
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      setProducts(data.data || []);
+      setStoreName((prev) => data.storeName || prev || "");
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      alert(
+        error instanceof Error
+          ? `Gagal mengambil data produk: ${error.message}`
+          : "Gagal mengambil data produk"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadSellerData = useCallback(async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session ?? null;
+      const token = session?.access_token;
+
+      if (!token) {
+        alert("Token tidak ditemukan");
+        return;
+      }
+
+      const sellerProfile = await resolveSellerProfile(session);
+      const fallbackId = session?.user?.id;
+      const id = sellerProfile?.id || fallbackId;
+
+      if (!id) {
+        alert("Data penjual tidak ditemukan");
+        return;
+      }
+
+      const name =
+        sellerProfile?.storeName ||
+        ((session?.user?.user_metadata as Record<string, unknown> | undefined)?.store_name as string | undefined) ||
+        ((session?.user?.user_metadata as Record<string, unknown> | undefined)?.name as string | undefined) ||
+        "Toko Saya";
+
+      setSellerId(id);
+      setStoreName(name);
+
+      await fetchProducts(id, token);
+    } catch (error) {
+      console.error("Error loading seller data:", error);
+      alert("Gagal memuat data penjual");
+    }
+  }, [fetchProducts, resolveSellerProfile]);
 
   useEffect(() => {
     let active = true;
@@ -69,62 +190,7 @@ export default function SellerStockReportPage() {
       active = false;
       listener?.subscription.unsubscribe();
     };
-  }, [router]);
-
-  const loadSellerData = async () => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      if (!token) {
-        alert("Token tidak ditemukan");
-        return;
-      }
-
-      // Get seller data from user metadata
-      const seller = (sessionData?.session?.user?.user_metadata as Record<string, unknown> | undefined)
-        ?.seller as Record<string, unknown> | undefined;
-      
-      if (!seller?.id) {
-        alert("Data penjual tidak ditemukan");
-        return;
-      }
-
-      const id = seller.id as string;
-      const name = (seller.store_name as string) || "Toko Saya";
-
-      setSellerId(id);
-      setStoreName(name);
-
-      await fetchProducts(id, token);
-    } catch (error) {
-      console.error("Error loading seller data:", error);
-      alert("Gagal memuat data penjual");
-    }
-  };
-
-  const fetchProducts = async (id: string, token: string) => {
-    try {
-      const response = await fetch(`/api/penjual/laporan/stok-rating?sellerId=${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setProducts(data.data || []);
-      setStoreName(data.storeName || storeName);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      alert("Gagal mengambil data produk");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [router, loadSellerData]);
 
   const handleDownloadReport = async () => {
     try {
@@ -157,7 +223,8 @@ export default function SellerStockReportPage() {
         return;
       }
 
-      if (!((window as any).html2pdf)) {
+      const html2pdfFactory = window.html2pdf;
+      if (!html2pdfFactory) {
         throw new Error("html2pdf library tidak tersedia");
       }
 
@@ -201,8 +268,7 @@ export default function SellerStockReportPage() {
       };
 
       console.log(`✅ [Step 6] Starting PDF generation`);
-      const html2pdf = (window as any).html2pdf;
-      html2pdf().set(opt).from(element).save();
+      html2pdfFactory().set(opt).from(element).save();
 
       console.log(`✅ [Step 7] PDF download initiated`);
 
