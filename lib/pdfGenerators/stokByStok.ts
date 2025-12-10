@@ -7,9 +7,162 @@ interface ProductStokData {
   stock: number;
   price: number;
   category: string;
+  rating: number;
 }
 
-export async function generateStokByStokPDF(sellerId: string): Promise<Uint8Array> {
+interface ProductFeedbackRow {
+  product_id: string;
+  rating: number | null;
+}
+
+// Consistent styling with other reports
+const PAGE_SIZE: [number, number] = [842, 595]; // Landscape A4
+const MARGIN_X = 40;
+const HEADER_BG = rgb(7 / 255, 121 / 255, 255 / 255); // Blue header
+const HEADER_TEXT = rgb(1, 1, 1); // White text
+const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
+
+// SRS-MartPlace-12: Kolom wajib No | Produk | Kategori | Harga | Rating | Stock
+// Stock di pojok kanan karena ini laporan fokus stok
+const columns = [
+  { key: "no", title: "No", width: 34 },
+  { key: "product", title: "Produk", width: 200 },
+  { key: "category", title: "Kategori", width: 120 },
+  { key: "price", title: "Harga (Rp)", width: 120 },
+  { key: "rating", title: "Rating", width: 80 },
+  { key: "stock", title: "Stock", width: 80 },
+] as const;
+
+type ColumnKey = (typeof columns)[number]["key"];
+
+const columnGetter: Record<
+  ColumnKey,
+  (record: ProductStokData, index: number) => string
+> = {
+  no: (_record, index) => (index + 1).toString(),
+  product: (record) => record.name,
+  category: (record) => record.category,
+  price: (record) => formatCurrency(record.price),
+  rating: (record) => record.rating.toFixed(2),
+  stock: (record) => record.stock.toString(),
+};
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
+function drawTableHeader(options: {
+  page: import("pdf-lib").PDFPage;
+  headerFont: import("pdf-lib").PDFFont;
+  startY: number;
+}) {
+  const { page, headerFont, startY } = options;
+  let currentX = MARGIN_X;
+  const headerHeight = 22;
+
+  columns.forEach((column) => {
+    page.drawRectangle({
+      x: currentX,
+      y: startY - headerHeight,
+      width: column.width,
+      height: headerHeight,
+      color: HEADER_BG,
+    });
+    page.drawText(column.title, {
+      x: currentX + 6,
+      y: startY - headerHeight + 7,
+      font: headerFont,
+      size: 9,
+      color: HEADER_TEXT,
+    });
+    currentX += column.width;
+  });
+}
+
+function drawRow(options: {
+  page: import("pdf-lib").PDFPage;
+  font: import("pdf-lib").PDFFont;
+  record: ProductStokData;
+  index: number;
+  startY: number;
+}) {
+  const { page, font, record, index, startY } = options;
+  const rowHeight = 22;
+  const textY = startY - rowHeight + 6;
+  let currentX = MARGIN_X;
+
+  const fillColor = index % 2 === 0 ? ROW_ALT_BG : undefined;
+
+  columns.forEach((column) => {
+    page.drawRectangle({
+      x: currentX,
+      y: startY - rowHeight,
+      width: column.width,
+      height: rowHeight,
+      color: fillColor,
+    });
+
+    const rawText = columnGetter[column.key](record, index);
+    const truncated =
+      rawText.length > 38 ? `${rawText.slice(0, 35)}...` : rawText;
+
+    // Stock column gets blue color (focus of this report), rating gets gray
+    const textColor =
+      column.key === "stock"
+        ? rgb(0.07, 0.48, 0.95) // Blue for stock (main focus)
+        : column.key === "rating"
+        ? rgb(0.3, 0.3, 0.3) // Gray for rating
+        : rgb(0.15, 0.15, 0.15); // Default dark
+
+    page.drawText(truncated, {
+      x: currentX + 6,
+      y: textY,
+      size: 9,
+      font,
+      color: textColor,
+      maxWidth: column.width - 12,
+    });
+
+    currentX += column.width;
+  });
+}
+
+function drawFooter(options: {
+  page: import("pdf-lib").PDFPage;
+  font: import("pdf-lib").PDFFont;
+  width: number;
+  pageNumber: number;
+}) {
+  const { page, font, width, pageNumber } = options;
+  page.drawLine({
+    start: { x: MARGIN_X, y: 50 },
+    end: { x: width - MARGIN_X, y: 50 },
+    thickness: 0.5,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+  page.drawText("* Laporan diurutkan berdasarkan jumlah stok (terbanyak)", {
+    x: MARGIN_X,
+    y: 32,
+    size: 8,
+    font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+  page.drawText(`Halaman ${pageNumber}`, {
+    x: width - MARGIN_X - 70,
+    y: 32,
+    size: 9,
+    font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+}
+
+export async function generateStokByStokPDF(
+  sellerId: string
+): Promise<Uint8Array> {
   try {
     console.log("📄 [PDF-GEN] Starting generateStokByStokPDF for:", sellerId);
 
@@ -38,345 +191,176 @@ export async function generateStokByStokPDF(sellerId: string): Promise<Uint8Arra
 
     console.log("✅ [PDF-GEN] Products fetched:", products?.length || 0);
 
+    // Fetch rating data for products
+    const productIds = (products ?? []).map((p) => p.id);
+    let feedbacks: ProductFeedbackRow[] = [];
+    if (productIds.length > 0) {
+      const { data: feedbackRows, error: feedbacksError } = await supabaseAdmin
+        .from("product_feedbacks")
+        .select("product_id, rating")
+        .in("product_id", productIds);
+
+      if (feedbacksError) {
+        console.warn(
+          "[PDF-GEN] Tidak dapat mengambil data feedback, lanjut tanpa rating",
+          feedbacksError.message
+        );
+      } else {
+        feedbacks = feedbackRows ?? [];
+      }
+    }
+
+    // Calculate rating averages
+    const ratingMap = new Map<string, { sum: number; count: number }>();
+    feedbacks.forEach((feedback) => {
+      if (!ratingMap.has(feedback.product_id)) {
+        ratingMap.set(feedback.product_id, { sum: 0, count: 0 });
+      }
+      const stats = ratingMap.get(feedback.product_id)!;
+      stats.sum += feedback.rating || 0;
+      stats.count += 1;
+    });
+
+    // Map products with rating
+    const mappedProducts: ProductStokData[] = (products ?? []).map(
+      (product) => {
+        const ratingData = ratingMap.get(product.id);
+        const avg =
+          ratingData && ratingData.count > 0
+            ? ratingData.sum / ratingData.count
+            : 0;
+        return {
+          id: product.id,
+          name: product.name ?? "-",
+          category: product.category ?? "-",
+          price: product.price ?? 0,
+          stock: product.stock ?? 0,
+          rating: Math.round(avg * 100) / 100,
+        };
+      }
+    );
+
     const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const headerFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    let page = pdfDoc.addPage([595, 842]); // A4
-    const { width, height } = page.getSize();
-    let yPosition = height - 50;
+    let page = pdfDoc.addPage(PAGE_SIZE);
+    let { width, height } = page.getSize();
+    let cursorY = height - 50;
+    let pageNumber = 1;
 
-    // ==================== HEADER ====================
-    page.drawText("WARUNGPEDIA", {
-      x: 50,
-      y: yPosition,
-      size: 20,
-      font: fontBold,
-      color: rgb(0.1, 0.3, 0.7),
-    });
-
-    page.drawText("Laporan Stok Produk", {
-      x: 50,
-      y: yPosition - 25,
-      size: 14,
-      font: fontBold,
-    });
-
-    yPosition -= 50;
-
-    page.drawLine({
-      start: { x: 50, y: yPosition },
-      end: { x: width - 50, y: yPosition },
-      thickness: 1,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    yPosition -= 25;
-
-    // ==================== INFO SECTION ====================
-    // Left Column - Seller Info
-    page.drawText("Informasi Penjual", {
-      x: 50,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-    });
-    yPosition -= 15;
-
-    page.drawText(`Nama Toko: ${seller?.store_name || "-"}`, {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: font,
-    });
-    yPosition -= 12;
-
-    page.drawText(`Pemilik: ${seller?.pic_name || "-"}`, {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: font,
-    });
-    yPosition -= 12;
-
-    page.drawText(`Kontak: ${seller?.pic_phone || "-"}`, {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: font,
-    });
-    yPosition -= 12;
-
-    page.drawText(`Email: ${seller?.pic_email || "-"}`, {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: font,
-    });
-
-    yPosition -= 20;
-
-    // Right Column - Report Info
-    const currentDate = new Date();
-    page.drawText("Informasi Laporan", {
-      x: 50,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-    });
-    yPosition -= 15;
-
-    page.drawText(
-      `Tanggal: ${currentDate.toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      })}`,
-      {
-        x: 50,
-        y: yPosition,
-        size: 9,
-        font: font,
+    const ensureSpace = (required: number) => {
+      if (cursorY - required > 70) {
+        return;
       }
-    );
-    yPosition -= 12;
 
-    page.drawText(
-      `Waktu: ${currentDate.toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })} WIB`,
-      {
-        x: 50,
-        y: yPosition,
-        size: 9,
-        font: font,
-      }
-    );
-    yPosition -= 12;
+      drawFooter({ page, font: bodyFont, width, pageNumber });
+      pageNumber += 1;
+      page = pdfDoc.addPage(PAGE_SIZE);
+      ({ width, height } = page.getSize());
+      cursorY = height - 50;
 
-    page.drawText(`Total Produk: ${products?.length || 0} item`, {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: font,
-    });
+      page.drawText("Laporan Stok Produk (lanjutan)", {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 14,
+        font: headerFont,
+        color: rgb(0.15, 0.15, 0.15),
+      });
+      cursorY -= 28;
 
-    yPosition -= 30;
-
-    // ==================== TABLE ====================
-    // Table Header
-    const tableTop = yPosition;
-    const rowHeight = 18;
-
-    // Header background
-    page.drawRectangle({
-      x: 40,
-      y: tableTop - rowHeight,
-      width: width - 80,
-      height: rowHeight,
-      color: rgb(0.85, 0.85, 0.85),
-    });
-
-    // Column definitions
-    const colX = {
-      no: 45,
-      name: 75,
-      stock: 320,
-      price: 380,
-      category: 470,
+      // Redraw table header on new page
+      drawTableHeader({ page, headerFont, startY: cursorY });
+      cursorY -= 28;
     };
 
-    // Headers
-    page.drawText("No", {
-      x: colX.no,
-      y: tableTop - 13,
-      size: 9,
-      font: fontBold,
+    // ==================== HEADER ====================
+    page.drawText("Warungpedia Seller Platform", {
+      x: MARGIN_X,
+      y: cursorY,
+      size: 12,
+      font: headerFont,
+      color: rgb(0.07, 0.48, 0.95),
     });
+    cursorY -= 18;
 
-    page.drawText("Nama Produk", {
-      x: colX.name,
-      y: tableTop - 13,
-      size: 9,
-      font: fontBold,
-    });
-
-    page.drawText("Stok", {
-      x: colX.stock,
-      y: tableTop - 13,
-      size: 9,
-      font: fontBold,
-    });
-
-    page.drawText("Harga (Rp)", {
-      x: colX.price,
-      y: tableTop - 13,
-      size: 9,
-      font: fontBold,
-    });
-
-    page.drawText("Kategori", {
-      x: colX.category,
-      y: tableTop - 13,
-      size: 9,
-      font: fontBold,
-    });
-
-    yPosition = tableTop - rowHeight - 5;
-
-    // Table Body
-    let pageNumber = 1;
-    (products as ProductStokData[]).forEach((product, index) => {
-      // Check if need new page
-      if (yPosition < 100) {
-        // Footer for current page
-        page.drawText(`Halaman ${pageNumber}`, {
-          x: width / 2 - 30,
-          y: 50,
-          size: 8,
-          font: font,
-          color: rgb(0.5, 0.5, 0.5),
-        });
-
-        // Create new page
-        page = pdfDoc.addPage([595, 842]);
-        yPosition = height - 50;
-        pageNumber++;
-
-        // Repeat header on new page
-        page.drawText("WARUNGPEDIA - Laporan Stok Produk (lanjutan)", {
-          x: 50,
-          y: yPosition,
-          size: 12,
-          font: fontBold,
-        });
-        yPosition -= 30;
-
-        // Repeat table header
-        page.drawRectangle({
-          x: 40,
-          y: yPosition - rowHeight,
-          width: width - 80,
-          height: rowHeight,
-          color: rgb(0.85, 0.85, 0.85),
-        });
-
-        page.drawText("No", {
-          x: colX.no,
-          y: yPosition - 13,
-          size: 9,
-          font: fontBold,
-        });
-        page.drawText("Nama Produk", {
-          x: colX.name,
-          y: yPosition - 13,
-          size: 9,
-          font: fontBold,
-        });
-        page.drawText("Stok", {
-          x: colX.stock,
-          y: yPosition - 13,
-          size: 9,
-          font: fontBold,
-        });
-        page.drawText("Harga (Rp)", {
-          x: colX.price,
-          y: yPosition - 13,
-          size: 9,
-          font: fontBold,
-        });
-        page.drawText("Kategori", {
-          x: colX.category,
-          y: yPosition - 13,
-          size: 9,
-          font: fontBold,
-        });
-
-        yPosition -= rowHeight + 5;
+    page.drawText(
+      `Laporan Stok Produk – ${seller?.store_name || "Toko Saya"}`,
+      {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 16,
+        font: headerFont,
+        color: rgb(0.15, 0.15, 0.15),
       }
+    );
+    cursorY -= 30;
 
-      // Row background (alternating)
-      if (index % 2 === 0) {
-        page.drawRectangle({
-          x: 40,
-          y: yPosition - rowHeight,
-          width: width - 80,
-          height: rowHeight,
-          color: rgb(0.97, 0.97, 0.97),
-        });
-      }
+    // ==================== SUMMARY INFO ====================
+    const currentDate = new Date();
+    const createdAt = new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(currentDate);
 
-      // Row data
-      page.drawText((index + 1).toString(), {
-        x: colX.no,
-        y: yPosition - 13,
-        size: 8,
-        font: font,
+    // Calculate highest and lowest stock
+    const sortedByStock = [...mappedProducts].sort((a, b) => b.stock - a.stock);
+    const highestStock = sortedByStock.length > 0 ? sortedByStock[0].stock : 0;
+    const lowestStock =
+      sortedByStock.length > 0
+        ? sortedByStock[sortedByStock.length - 1].stock
+        : 0;
+
+    const summaryLines = [
+      `Tanggal dibuat : ${createdAt}`,
+      `Total produk   : ${mappedProducts.length}`,
+      mappedProducts.length > 0
+        ? `Stok tertinggi : ${highestStock} | Stok terendah : ${lowestStock}`
+        : "Belum ada data produk untuk ditampilkan",
+    ];
+
+    summaryLines.forEach((line) => {
+      page.drawText(line, {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 10,
+        font: bodyFont,
+        color: rgb(0.25, 0.25, 0.25),
       });
-
-      const productName =
-        product.name.length > 35
-          ? product.name.substring(0, 32) + "..."
-          : product.name;
-      page.drawText(productName, {
-        x: colX.name,
-        y: yPosition - 13,
-        size: 8,
-        font: font,
-      });
-
-      page.drawText((product.stock || 0).toString(), {
-        x: colX.stock,
-        y: yPosition - 13,
-        size: 8,
-        font: font,
-      });
-
-      page.drawText((product.price || 0).toLocaleString("id-ID"), {
-        x: colX.price,
-        y: yPosition - 13,
-        size: 8,
-        font: font,
-      });
-
-      const category =
-        product.category.length > 15
-          ? product.category.substring(0, 12) + "..."
-          : product.category;
-      page.drawText(category, {
-        x: colX.category,
-        y: yPosition - 13,
-        size: 8,
-        font: font,
-      });
-
-      yPosition -= rowHeight;
+      cursorY -= 16;
     });
 
-    // Final page footer
-    page.drawLine({
-      start: { x: 50, y: 80 },
-      end: { x: width - 50, y: 80 },
-      thickness: 0.5,
-      color: rgb(0.7, 0.7, 0.7),
-    });
+    cursorY -= 10;
 
-    page.drawText("* Laporan diurutkan berdasarkan jumlah stok (terbanyak)", {
-      x: 50,
-      y: 65,
-      size: 7,
-      font: font,
-      color: rgb(0.4, 0.4, 0.4),
-    });
+    // ==================== TABLE ====================
+    if (mappedProducts.length === 0) {
+      page.drawRectangle({
+        x: MARGIN_X,
+        y: cursorY - 40,
+        width: width - MARGIN_X * 2,
+        height: 40,
+        color: rgb(0.97, 0.97, 0.97),
+      });
+      page.drawText("Belum ada produk yang dapat ditampilkan.", {
+        x: MARGIN_X + 10,
+        y: cursorY - 18,
+        size: 11,
+        font: bodyFont,
+        color: rgb(0.35, 0.35, 0.35),
+      });
+    } else {
+      drawTableHeader({ page, headerFont, startY: cursorY });
+      cursorY -= 28;
 
-    page.drawText(`Halaman ${pageNumber}`, {
-      x: width / 2 - 30,
-      y: 50,
-      size: 8,
-      font: font,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+      mappedProducts.forEach((record, index) => {
+        ensureSpace(30);
+        drawRow({ page, font: bodyFont, record, index, startY: cursorY });
+        cursorY -= 24;
+      });
+    }
+
+    drawFooter({ page, font: bodyFont, width, pageNumber });
 
     console.log("📄 [PDF-GEN] Saving PDF...");
     const pdfBytes = await pdfDoc.save();
