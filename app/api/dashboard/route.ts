@@ -60,8 +60,8 @@ export async function GET(req: NextRequest) {
 
     const [{ data: sellers, error: sellersError }, { data: products, error: productsError }] =
       await Promise.all([
-        supabaseAdmin.from<SellerRow>("sellers").select("id, pic_province"),
-        supabaseAdmin.from<CategoryRow>("products").select("category"),
+        supabaseAdmin.from("sellers").select("id, pic_province"),
+        supabaseAdmin.from("products").select("category"),
       ]);
 
     if (sellersError) {

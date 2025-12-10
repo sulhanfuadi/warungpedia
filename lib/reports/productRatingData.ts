@@ -35,7 +35,7 @@ const DEFAULT_PROVINCE = "Tidak diketahui";
 
 export async function fetchProductRatingData(): Promise<ProductRatingRecord[]> {
   const { data: products, error } = await supabaseAdmin
-    .from<ProductRow>("products")
+      .from("products")
     .select(
       `id, name, category, price, stock, seller_id, sellers!products_seller_id_fkey (store_name, pic_province)`,
     );
@@ -52,7 +52,7 @@ export async function fetchProductRatingData(): Promise<ProductRatingRecord[]> {
   const productIds = rows.map((row) => row.id);
 
   const { data: feedbacks, error: feedbacksError } = await supabaseAdmin
-    .from<ProductFeedbackRow>("product_feedbacks")
+      .from("product_feedbacks")
     .select("product_id, rating")
     .in("product_id", productIds);
 

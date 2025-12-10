@@ -325,10 +325,11 @@ export default function AdminDashboardPage() {
                       <Label
                         position="center"
                         content={({ viewBox }) => {
-                          if (!viewBox || typeof viewBox.cx !== "number" || typeof viewBox.cy !== "number") {
+                          const vb = viewBox as { cx?: number; cy?: number } | undefined;
+                          if (!vb || typeof vb.cx !== "number" || typeof vb.cy !== "number") {
                             return null;
                           }
-                          const { cx, cy } = viewBox;
+                          const { cx, cy } = vb;
                           return (
                             <g>
                               <text x={cx} y={cy - 8} textAnchor="middle" fill="#a3a3a3" fontSize={12}>

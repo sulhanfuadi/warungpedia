@@ -54,7 +54,7 @@ export default function SellerStockReportPage() {
     const fallbackUserId = session.user.id;
     try {
       const { data, error } = await supabase
-        .from<SellerProfileRow>("sellers")
+        .from("sellers")
         .select("id, store_name, user_id")
         .or(`id.eq.${fallbackUserId},user_id.eq.${fallbackUserId}`)
         .limit(1)
