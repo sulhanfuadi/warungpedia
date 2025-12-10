@@ -4,32 +4,17 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  dashboardPathByRole,
+  inferRole,
+  type Role,
+  type UserLike,
+} from "@/lib/auth/roles";
 
-type UserLike = {
-  email?: string | null;
-  user_metadata?: Record<string, unknown>;
-  app_metadata?: Record<string, unknown>;
-};
-
-type Role = "admin" | "seller" | undefined;
-
-const adminEmails = [process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id"];
-
-const inferRole = (user?: UserLike | null): Role => {
-  if (!user) return undefined;
-  const metaRole =
-    (user.user_metadata?.role as string | undefined) ||
-    (user.app_metadata?.role as string | undefined);
-  if (metaRole === "admin" || metaRole === "seller") return metaRole;
-  if (user.email && adminEmails.includes(user.email)) return "admin";
-  return undefined;
-};
-
-const redirectByRole = (role: Role, router: ReturnType<typeof useRouter>) => {
-  if (role === "admin") {
-    router.replace("/admin/dashboard");
-  } else if (role === "seller") {
-    router.replace("/penjual/dashboard");
+const redirectByRole = (role: Role | undefined, router: ReturnType<typeof useRouter>) => {
+  const destination = dashboardPathByRole(role);
+  if (destination) {
+    router.replace(destination);
   }
 };
 

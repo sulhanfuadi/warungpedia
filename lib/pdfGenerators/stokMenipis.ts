@@ -11,7 +11,7 @@ interface ProductLowStockData {
 
 export async function generateStokMenipisPDF(
   sellerId: string
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   try {
     console.log(
       "📄 [PDF-MENIPIS] Starting generateStokMenipisPDF for:",
@@ -208,7 +208,7 @@ export async function generateStokMenipisPDF(
       });
 
       const pdfBytes = await pdfDoc.save();
-      return Buffer.from(pdfBytes);
+      return pdfBytes;
     }
 
     // ==================== WARNING BOX ====================
@@ -513,7 +513,7 @@ export async function generateStokMenipisPDF(
       pdfBytes.length
     );
 
-    return Buffer.from(pdfBytes);
+    return pdfBytes;
   } catch (error) {
     console.error("❌ [PDF-MENIPIS] Error:", error);
     console.error("Stack:", error instanceof Error ? error.stack : "No stack");

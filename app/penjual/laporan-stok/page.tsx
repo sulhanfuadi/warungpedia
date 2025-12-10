@@ -29,6 +29,7 @@ export default function SellerStockReportPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [storeName, setStoreName] = useState("");
   const [sellerId, setSellerId] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   const resolveSellerProfile = useCallback(async (session: Session | null) => {
     if (!session?.user) return null;
@@ -194,88 +195,41 @@ export default function SellerStockReportPage() {
 
   const handleDownloadReport = async () => {
     try {
-      console.log(`📥 [Step 1] Fetching stock report`);
+      setDownloading(true);
 
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
-      const adminName = sessionData?.session?.user?.user_metadata?.name || "Penjual";
 
       if (!token || !sellerId) {
         throw new Error("Token atau Seller ID tidak ditemukan");
       }
 
-      const response = await fetch(`/api/penjual/laporan/stok-rating?sellerId=${sellerId}`, {
+      const response = await fetch(`/api/penjual/reports/stock-rating?sellerId=${sellerId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const text = await response.text();
+        throw new Error(text || `API error: ${response.status}`);
       }
 
-      const reportData = await response.json();
-      console.log(`✅ [Step 2] Data fetched:`, reportData.data);
-      console.log(`   Total products: ${reportData.data.length}`);
-
-      if (!reportData.success || !reportData.data?.length) {
-        alert("Tidak ada data produk untuk diunduh");
-        return;
-      }
-
-      const html2pdfFactory = window.html2pdf;
-      if (!html2pdfFactory) {
-        throw new Error("html2pdf library tidak tersedia");
-      }
-
-      const now = new Date();
-      const tanggalDibuat = now.toLocaleDateString("id-ID");
-
-      let tableRows = "";
-      reportData.data.forEach((product: ProductStock, idx: number) => {
-        const formattedPrice = new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          minimumFractionDigits: 0,
-        }).format(product.price);
-
-        tableRows += `<tr><td style="border:1px solid #000;padding:10px;text-align:center;color:#000;font-size:10px;">${idx + 1}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:10px;">${product.name || "-"}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:10px;">${product.category || "-"}</td><td style="border:1px solid #000;padding:10px;text-align:right;color:#000;font-size:10px;">${formattedPrice}</td><td style="border:1px solid #000;padding:10px;text-align:center;color:#0779FF;font-weight:bold;font-size:10px;">${product.rating.toFixed(2)}</td><td style="border:1px solid #000;padding:10px;text-align:center;color:#000;font-size:10px;">${product.stock}</td></tr>`;
-      });
-
-      const htmlContent = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;padding:15px;margin:0;color:#000;"><h1 style="text-align:center;color:#000;font-size:16px;margin:0 0 5px 0;">LAPORAN STOK PRODUK</h1><p style="text-align:center;color:#000;font-size:11px;margin:0 0 15px 0;">Toko: ${reportData.storeName || "-"}</p><div style="margin:10px 0;padding:10px;background:#f0f0f0;border:1px solid #000;"><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Tanggal dibuat:</strong> ${tanggalDibuat} oleh ${adminName}</p><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Total Produk:</strong> ${reportData.data.length}</p><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Urutan:</strong> Rating Menurun (Tertinggi ke Terendah)</p></div><table style="width:100%;border-collapse:collapse;border:1px solid #000;margin:15px 0;"><thead><tr style="background:#0779FF;color:white;"><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">No.</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:10px;">Nama Produk</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:10px;">Kategori</th><th style="border:1px solid #000;padding:10px;text-align:right;font-weight:bold;font-size:10px;">Harga</th><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">Rating</th><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">Stok</th></tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:20px;border-top:1px solid #000;padding-top:10px;text-align:center;color:#000;font-size:9px;"><p style="margin:3px 0;">Dokumen ini dibuat otomatis oleh Warungpedia</p><p style="margin:0;">© 2025 Warungpedia</p></div></body></html>`;
-
-      console.log(`✅ [Step 4] HTML generated: ${htmlContent.length} chars`);
-
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = htmlContent;
-      tempDiv.style.width = "1000px";
-      tempDiv.style.background = "white";
-      tempDiv.style.padding = "0";
-      tempDiv.style.margin = "0";
-
-      document.body.appendChild(tempDiv);
-      console.log(`✅ [Step 5] Element appended to DOM`);
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const element = tempDiv;
-      const opt = {
-        margin: 5,
-        filename: `Laporan-Stok-${new Date().toISOString().split("T")[0]}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: "l", unit: "mm", format: "a4" },
-      };
-
-      console.log(`✅ [Step 6] Starting PDF generation`);
-      html2pdfFactory().set(opt).from(element).save();
-
-      console.log(`✅ [Step 7] PDF download initiated`);
-
-      document.body.removeChild(tempDiv);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeStoreName = (storeName || "Toko-Saya").replace(/\s+/g, "-");
+      link.download = `Laporan-Stok-${safeStoreName}-${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading report:", error);
       alert(`Gagal mendownload laporan: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -336,9 +290,10 @@ export default function SellerStockReportPage() {
           </div>
           <button
             onClick={handleDownloadReport}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            disabled={downloading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            📥 Download PDF
+            {downloading ? "Mengunduh laporan..." : "📥 Download PDF"}
           </button>
         </div>
 
