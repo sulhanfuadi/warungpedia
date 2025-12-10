@@ -4,6 +4,7 @@ import {
   listProductFeedbacks,
 } from "@/lib/controllers/productFeedbackController";
 import { validateProductFeedback } from "@/lib/utils/productFeedbackValidator";
+import { sendThankYouEmail } from "@/lib/services/emailService";
 
 export async function GET(
   _req: NextRequest,
@@ -48,6 +49,18 @@ export async function POST(
     }
 
     const created = await createProductFeedback(payload);
+
+    const emailResult = await sendThankYouEmail({
+      email: payload.email,
+      name: payload.name,
+      rating: payload.rating,
+      comment: payload.comment,
+    });
+
+    if (!emailResult.success) {
+      console.error("⚠️ Thank-you email failed:", emailResult.error);
+    }
+
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
