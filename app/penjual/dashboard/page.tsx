@@ -238,7 +238,9 @@ export default function SellerDashboardPage() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-              <p className="text-gray-400">Pantau performa toko dan laporan terbaru.</p>
+              <p className="text-gray-400">
+                Pantau performa toko dan laporan terbaru.
+              </p>
             </div>
 
             <div className="mb-6 rounded-xl border border-[#3a3a3a] bg-[#2a2a2a] p-6">
@@ -248,26 +250,50 @@ export default function SellerDashboardPage() {
             </div>
 
             {user?.id && (
-              <div className="mb-6 rounded-xl border border-[#3a3a3a] bg-[#2a2a2a] p-6">
-                <h2 className="mb-4 text-lg font-semibold">📊 Laporan Penjual</h2>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={handleDownloadStokByStok}
-                    disabled={isDownloading}
-                    className="rounded-lg border border-[#3a3a3a] px-4 py-2 font-semibold hover:border-green-500 hover:text-green-300 disabled:opacity-50"
-                  >
-                    {isDownloading
-                      ? "⏳ Generating..."
-                      : "📥 Download Laporan Stok (Urut Stok)"}
-                  </button>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Laporan Stok Produk */}
+                <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      Laporan Stok Produk
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Unduh laporan PDF stok produk berdasarkan urutan stok atau
+                      rating.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      onClick={handleDownloadStokByStok}
+                      disabled={isDownloading}
+                      className="rounded-lg bg-green-600 hover:bg-green-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDownloading
+                        ? "Mengunduh laporan..."
+                        : "Download Laporan Stok (Urut Stok)"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Laporan Stok Menipis */}
+                <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      Laporan Stok Menipis
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Daftar produk yang harus segera dipesan (stok kurang dari
+                      2).
+                    </p>
+                  </div>
                   <button
                     onClick={handleDownloadStokMenipis}
                     disabled={isDownloading}
-                    className="rounded-lg border border-[#3a3a3a] px-4 py-2 font-semibold hover:border-yellow-500 hover:text-yellow-300 disabled:opacity-50"
+                    className="rounded-lg bg-yellow-600 hover:bg-yellow-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isDownloading
-                      ? "⏳ Generating..."
-                      : "⚠️ Download Laporan Stok Menipis (< 2)"}
+                      ? "Mengunduh laporan..."
+                      : "Download Laporan Stok Menipis"}
                   </button>
                 </div>
               </div>
