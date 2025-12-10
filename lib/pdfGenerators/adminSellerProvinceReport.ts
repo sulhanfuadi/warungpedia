@@ -160,7 +160,7 @@ function drawFooter(options: {
 
 export async function generateSellerProvinceReport(): Promise<Uint8Array> {
   const { data, error } = await supabaseAdmin
-    .from<SellerRow>("sellers")
+    .from("sellers")
     .select("id, store_name, pic_email, pic_city, pic_province, status")
     .order("pic_province", { ascending: true });
 

@@ -62,7 +62,7 @@ export async function fetchSellerStockReportData(params: {
   const fallbackStoreName = metadataSeller?.store_name || metadataSeller?.storeName || userMetadata?.store_name;
 
   const { data: sellerRow, error: sellerError } = await supabaseAdmin
-    .from<SellerProfileRow>("sellers")
+    .from("sellers")
     .select("id, user_id, store_name")
     .or(`id.eq.${sellerId},user_id.eq.${sellerId}`)
     .limit(1)
@@ -94,7 +94,7 @@ export async function fetchSellerStockReportData(params: {
   }
 
   const { data: products, error: productsError } = await supabaseAdmin
-    .from<SellerProductRow>("products")
+    .from("products")
     .select("id, name, category, price, stock")
     .eq("seller_id", sellerId);
 
@@ -108,7 +108,7 @@ export async function fetchSellerStockReportData(params: {
   let feedbacks: ProductFeedbackRow[] = [];
   if (productIds.length > 0) {
     const { data: feedbackRows, error: feedbacksError } = await supabaseAdmin
-      .from<ProductFeedbackRow>("product_feedbacks")
+      .from("product_feedbacks")
       .select("product_id, rating")
       .in("product_id", productIds);
 

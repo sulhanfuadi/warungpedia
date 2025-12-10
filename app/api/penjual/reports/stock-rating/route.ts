@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       .toISOString()
       .split("T")[0]}.pdf`;
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
