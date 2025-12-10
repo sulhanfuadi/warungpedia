@@ -13,41 +13,43 @@ interface ProductReport {
   price: number;
   rating: number;
   stock: number;
-  created_at: string;
+  storeName: string;
+  province: string;
 }
+
+const ADMIN_EMAILS = [
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+];
+
+const inferAdminRole = (session: unknown): string | undefined => {
+  if (!session || typeof session !== "object") return undefined;
+  const s = session as {
+    user?: {
+      user_metadata?: Record<string, unknown>;
+      app_metadata?: Record<string, unknown>;
+      email?: string;
+    };
+  };
+  const metaRole =
+    (s.user?.user_metadata?.role as string | undefined) ||
+    (s.user?.app_metadata?.role as string | undefined);
+  if (metaRole) return metaRole;
+  const email = s.user?.email;
+  if (email && ADMIN_EMAILS.includes(email)) return "admin";
+  return undefined;
+};
 
 export default function ProductsReportPage() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
-
-  const adminEmails = [
-    process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
-  ];
-
-  const inferRole = (session: unknown): string | undefined => {
-    if (!session || typeof session !== "object") return undefined;
-    const s = session as {
-      user?: {
-        user_metadata?: Record<string, unknown>;
-        app_metadata?: Record<string, unknown>;
-        email?: string;
-      };
-    };
-    const metaRole =
-      (s.user?.user_metadata?.role as string | undefined) ||
-      (s.user?.app_metadata?.role as string | undefined);
-    if (metaRole) return metaRole;
-    const email = s.user?.email;
-    if (email && adminEmails.includes(email)) return "admin";
-    return undefined;
-  };
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
-      const role = inferRole(data.session);
+      const role = inferAdminRole(data.session);
       if (!data.session || role !== "admin") {
         router.replace("/login");
         return;
@@ -59,9 +61,7 @@ export default function ProductsReportPage() {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event: string | null, session: Session | null) => {
-      const role =
-        (session?.user?.user_metadata as Record<string, unknown> | undefined)?.role ||
-        (session?.user?.app_metadata as Record<string, unknown> | undefined)?.role;
+      const role = inferAdminRole(session);
       if (_event === "SIGNED_OUT" || !session || role !== "admin") {
         router.replace("/login");
       }
@@ -76,8 +76,12 @@ export default function ProductsReportPage() {
   const fetchProducts = async () => {
     try {
       const response = await fetch("/api/admin/products/report");
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `API error ${response.status}`);
+      }
       const data = await response.json();
-      setProducts(data.data || []);
+      setProducts(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error("Error fetching products:", error);
       alert("Gagal mengambil data produk");
@@ -86,90 +90,22 @@ export default function ProductsReportPage() {
     }
   };
 
-  const handleDownloadReport = async () => {
+  const handleDownloadReport = () => {
+    setDownloading(true);
     try {
-      console.log(`📥 [Step 1] Fetching products report`);
-
-      // Get admin user info
-      const { data: sessionData } = await supabase.auth.getSession();
-      const adminEmail = sessionData?.session?.user?.email || "Admin";
-      const adminName = sessionData?.session?.user?.user_metadata?.name || adminEmail;
-
-      // Fetch data
-      const response = await fetch("/api/admin/products/report");
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      const newWindow = window.open(
+        "/api/admin/reports/products/rating",
+        "_blank",
+        "noopener,noreferrer",
+      );
+      if (!newWindow) {
+        throw new Error("Browser memblokir pop-up download. Izinkan pop-up dan coba lagi.");
       }
-
-      const reportData = await response.json();
-      console.log(`✅ [Step 2] Data dari Supabase:`, reportData.data);
-      console.log(`   Total products: ${reportData.data.length}`);
-
-      if (!reportData.success || !reportData.data?.length) {
-        alert("Tidak ada data produk untuk diunduh");
-        return;
-      }
-
-      // Check library availability
-      if (!((window as any).html2pdf)) {
-        throw new Error("html2pdf library tidak tersedia di window object");
-      }
-
-      // Build HTML
-      const now = new Date();
-      const tanggalDibuat = now.toLocaleDateString("id-ID");
-
-      let tableRows = "";
-      reportData.data.forEach((product: ProductReport, idx: number) => {
-        const formattedPrice = new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          minimumFractionDigits: 0,
-        }).format(product.price);
-
-        tableRows += `<tr><td style="border:1px solid #000;padding:10px;text-align:center;color:#000;font-size:10px;">${idx + 1}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:10px;">${product.name || "-"}</td><td style="border:1px solid #000;padding:10px;color:#000;font-size:10px;">${product.category || "-"}</td><td style="border:1px solid #000;padding:10px;text-align:right;color:#000;font-size:10px;">${formattedPrice}</td><td style="border:1px solid #000;padding:10px;text-align:center;color:#0779FF;font-weight:bold;font-size:10px;">${product.rating.toFixed(2)}</td><td style="border:1px solid #000;padding:10px;text-align:center;color:#000;font-size:10px;">${product.stock}</td></tr>`;
-      });
-
-      const htmlContent = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;padding:15px;margin:0;color:#000;"><h1 style="text-align:center;color:#000;font-size:16px;margin:0 0 5px 0;">LAPORAN DAFTAR PRODUK</h1><p style="text-align:center;color:#000;font-size:11px;margin:0 0 15px 0;">Warungpedia Admin System</p><div style="margin:10px 0;padding:10px;background:#f0f0f0;border:1px solid #000;"><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Tanggal dibuat:</strong> ${tanggalDibuat} oleh ${adminName}</p><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Total Produk:</strong> ${reportData.data.length}</p><p style="margin:3px 0;color:#000;font-size:11px;"><strong>Urutan:</strong> Rating Menurun (Tertinggi ke Terendah)</p></div><table style="width:100%;border-collapse:collapse;border:1px solid #000;margin:15px 0;"><thead><tr style="background:#0779FF;color:white;"><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">No.</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:10px;">Nama Produk</th><th style="border:1px solid #000;padding:10px;text-align:left;font-weight:bold;font-size:10px;">Kategori</th><th style="border:1px solid #000;padding:10px;text-align:right;font-weight:bold;font-size:10px;">Harga</th><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">Rating</th><th style="border:1px solid #000;padding:10px;text-align:center;font-weight:bold;font-size:10px;">Stok</th></tr></thead><tbody>${tableRows}</tbody></table><div style="margin-top:20px;border-top:1px solid #000;padding-top:10px;text-align:center;color:#000;font-size:9px;"><p style="margin:3px 0;">Dokumen ini dibuat otomatis oleh Warungpedia</p><p style="margin:0;">© 2025 Warungpedia</p></div></body></html>`;
-
-      console.log(`✅ [Step 4] HTML generated: ${htmlContent.length} chars`);
-
-      // Create temporary element
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = htmlContent;
-      tempDiv.style.width = "1000px";
-      tempDiv.style.background = "white";
-      tempDiv.style.padding = "0";
-      tempDiv.style.margin = "0";
-
-      document.body.appendChild(tempDiv);
-      console.log(`✅ [Step 5] Element appended to DOM`);
-
-      // Wait untuk rendering
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Generate PDF
-      const element = tempDiv;
-      const opt = {
-        margin: 5,
-        filename: `Laporan-Produk-${new Date().toISOString().split("T")[0]}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: "l", unit: "mm", format: "a4" },
-      };
-
-      console.log(`✅ [Step 6] Starting PDF generation with options:`, opt);
-      const html2pdf = (window as any).html2pdf;
-      html2pdf().set(opt).from(element).save();
-
-      console.log(`✅ [Step 7] PDF download initiated`);
-
-      // Clean up
-      document.body.removeChild(tempDiv);
     } catch (error) {
-      console.error("Error downloading report:", error);
-      alert(`Gagal mendownload laporan: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Error opening report:", error);
+      alert(`Gagal membuka laporan: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setTimeout(() => setDownloading(false), 300);
     }
   };
 
@@ -230,9 +166,10 @@ export default function ProductsReportPage() {
           </div>
           <button
             onClick={handleDownloadReport}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            disabled={downloading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            📥 Download PDF
+            {downloading ? "Mengunduh laporan..." : "📥 Download PDF"}
           </button>
         </div>
 
@@ -244,8 +181,10 @@ export default function ProductsReportPage() {
                 <tr className="bg-[#0779FF] text-white">
                   <th className="px-4 py-3 text-center font-semibold">No.</th>
                   <th className="px-4 py-3 text-left font-semibold">Nama Produk</th>
+                  <th className="px-4 py-3 text-left font-semibold">Nama Toko</th>
                   <th className="px-4 py-3 text-left font-semibold">Kategori</th>
                   <th className="px-4 py-3 text-right font-semibold">Harga</th>
+                  <th className="px-4 py-3 text-center font-semibold">Provinsi</th>
                   <th className="px-4 py-3 text-center font-semibold">Rating</th>
                   <th className="px-4 py-3 text-center font-semibold">Stok</th>
                 </tr>
@@ -265,6 +204,7 @@ export default function ProductsReportPage() {
                     >
                       <td className="px-4 py-3 text-center text-gray-300">{idx + 1}</td>
                       <td className="px-4 py-3 text-gray-300">{product.name}</td>
+                      <td className="px-4 py-3 text-gray-300">{product.storeName}</td>
                       <td className="px-4 py-3 text-gray-300">{product.category}</td>
                       <td className="px-4 py-3 text-right text-gray-300">
                         {new Intl.NumberFormat("id-ID", {
@@ -273,6 +213,7 @@ export default function ProductsReportPage() {
                           minimumFractionDigits: 0,
                         }).format(product.price)}
                       </td>
+                      <td className="px-4 py-3 text-center text-gray-300">{product.province}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-[#0779FF] font-bold">{product.rating.toFixed(2)}</span>
                       </td>

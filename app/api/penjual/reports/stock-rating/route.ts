@@ -3,6 +3,10 @@ import {
   fetchSellerStockReportData,
   SellerStockReportError,
 } from "@/lib/reports/sellerStockReportData";
+import { generateSellerStockRatingReport } from "@/lib/pdfGenerators/sellerStockRatingReport";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get("authorization");
@@ -12,52 +16,43 @@ function getBearerToken(req: NextRequest): string | null {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔵 [Seller Stock Report] Request started");
-
     const token = getBearerToken(request);
     if (!token) {
-      console.log("❌ [Seller Stock Report] No token found");
       return NextResponse.json(
         { error: "Unauthorized - Token tidak ditemukan" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const sellerId = searchParams.get("sellerId");
-
+    const sellerId = new URL(request.url).searchParams.get("sellerId");
     if (!sellerId) {
-      console.log("❌ [Seller Stock Report] No sellerId in query");
       return NextResponse.json(
         { error: "sellerId query parameter wajib diisi" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { products, storeName } = await fetchSellerStockReportData({ token, sellerId });
+    const pdfBytes = await generateSellerStockRatingReport({ storeName, products });
+    const filename = `Laporan-Stok-${storeName.replace(/\s+/g, "-")}-${new Date()
+      .toISOString()
+      .split("T")[0]}.pdf`;
 
-    console.log(
-      `✅ [Seller Stock Report] Returning ${products.length} products with ratings`,
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: products,
-      totalRecords: products.length,
-      storeName,
-      generatedAt: new Date().toISOString(),
+    return new NextResponse(pdfBytes, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
     });
   } catch (error) {
     if (error instanceof SellerStockReportError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error("❌ [Seller Stock Report] Unexpected error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ [SellerStockPDF] Unexpected error", error);
+    const details = error instanceof Error ? error.message : "Terjadi kesalahan tak terduga";
     return NextResponse.json(
-      {
-        error: "Terjadi kesalahan server",
-        details: process.env.NODE_ENV === "development" ? errorMessage : undefined,
-      },
+      { error: "Gagal membuat laporan stok", details },
       { status: 500 },
     );
   }

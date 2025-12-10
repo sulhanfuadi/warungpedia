@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Logo from "@/components/ui/Logo";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  dashboardPathByRole,
+  inferRole,
+  type Role,
+  type UserLike,
+} from "@/lib/auth/roles";
 
 type ProductCard = {
   id: string;
@@ -27,6 +34,9 @@ export default function HomePage() {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserLike | null>(null);
+  const [userRole, setUserRole] = useState<Role | undefined>(undefined);
 
   const [qProduct, setQProduct] = useState("");
   const [qStore, setQStore] = useState("");
@@ -59,10 +69,54 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const syncSession = (sessionUser?: UserLike | null) => {
+      if (!active) return;
+      const normalizedUser = sessionUser ?? null;
+      setCurrentUser(normalizedUser);
+      setUserRole(inferRole(normalizedUser));
+      setAuthChecking(false);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      syncSession((data.session?.user as UserLike) || null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncSession((session?.user as UserLike) || null);
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
   const activeFilters = useMemo(
     () => qProduct || qStore || qCategory || qLocation,
     [qProduct, qStore, qCategory, qLocation],
   );
+
+  const getMetaString = (key: string) => {
+    const meta = currentUser?.user_metadata as Record<string, unknown> | null;
+    const value = meta?.[key];
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : undefined;
+    }
+    return undefined;
+  };
+
+  const displayName =
+    getMetaString("full_name") ||
+    getMetaString("name") ||
+    currentUser?.email ||
+    "Akun Anda";
+  const avatarUrl = getMetaString("avatar_url");
+  const avatarInitial = (displayName || "P").charAt(0).toUpperCase();
+  const dashboardPath = dashboardPathByRole(userRole);
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white">
@@ -73,12 +127,41 @@ export default function HomePage() {
             <span>
               Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau lokasi
             </span>
-            <Link
-              href="/login"
-              className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-[#0779FF] hover:text-[#0779FF]"
-            >
-              Login
-            </Link>
+            {authChecking ? (
+              <div className="h-10 w-24 animate-pulse rounded-full bg-[#1f1f1f]" />
+            ) : currentUser && dashboardPath ? (
+              <Link
+                href={dashboardPath}
+                className="group flex items-center gap-3 rounded-full border border-[#2f2f2f] px-3 py-1.5 text-white transition hover:border-[#0779FF]"
+              >
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    width={48}
+                    height={48}
+                    className="h-9 w-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0779FF] text-sm font-semibold text-white">
+                    {avatarInitial}
+                  </div>
+                )}
+                <div className="hidden text-left sm:block">
+                  <p className="text-xs font-semibold text-white">{displayName}</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
+                    {userRole === "admin" ? "Admin" : "Seller"}
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-full border border-[#2f2f2f] px-4 py-2 text-xs font-semibold text-white transition hover:border-[#0779FF] hover:text-[#0779FF]"
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </header>

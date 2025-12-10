@@ -9,7 +9,7 @@ interface ProductStokData {
   category: string;
 }
 
-export async function generateStokByStokPDF(sellerId: string): Promise<Buffer> {
+export async function generateStokByStokPDF(sellerId: string): Promise<Uint8Array> {
   try {
     console.log("📄 [PDF-GEN] Starting generateStokByStokPDF for:", sellerId);
 
@@ -382,7 +382,7 @@ export async function generateStokByStokPDF(sellerId: string): Promise<Buffer> {
     const pdfBytes = await pdfDoc.save();
     console.log("✅ [PDF-GEN] PDF saved successfully, size:", pdfBytes.length);
 
-    return Buffer.from(pdfBytes);
+    return pdfBytes;
   } catch (error) {
     console.error("❌ [PDF-GEN] Error in generateStokByStokPDF:");
     console.error("Error:", error);

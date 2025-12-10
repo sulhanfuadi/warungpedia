@@ -125,6 +125,15 @@ export async function sendApprovalEmail(
               </p>
             </div>
 
+            <div style="text-align: center; margin: 30px 0;">
+              <a
+                href="${loginUrl}"
+                style="display: inline-block; background: #0779FF; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;"
+              >
+                Masuk ke Dashboard Penjual
+              </a>
+            </div>
+
             <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
 
             <p style="color: #555; line-height: 1.6;">

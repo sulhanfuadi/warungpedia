@@ -14,15 +14,6 @@ interface Seller {
   verified_at: string | null;
 }
 
-const fonts = {
-  Helvetica: {
-    normal: "Helvetica",
-    bold: "Helvetica-Bold",
-    italics: "Helvetica-Oblique",
-    bolditalics: "Helvetica-BoldOblique",
-  },
-};
-
 export async function GET(request: NextRequest) {
   try {
     console.log("🔵 [PDF Report] Request started");
@@ -35,7 +26,7 @@ export async function GET(request: NextRequest) {
     console.log(`🔵 [PDF Report] Filter: ${filterStatus}, Format: ${format}`);
 
     // Fetch sellers dari database
-    let query = supabaseAdmin.from("sellers").select("*");
+    let query = supabaseAdmin.from<Seller>("sellers").select("*");
 
     // Apply status filter
     if (filterStatus !== "ALL" && filterStatus !== "PENDING") {

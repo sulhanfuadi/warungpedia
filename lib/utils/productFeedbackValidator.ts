@@ -6,6 +6,11 @@ export type ValidationResult = {
   errors: Partial<Record<keyof Omit<NewProductFeedbackInput, "productId">, string>>;
 };
 
+type ProvinceName = (typeof INDONESIA_PROVINCES)[number];
+
+const isValidProvince = (province: string): province is ProvinceName =>
+  INDONESIA_PROVINCES.includes(province as ProvinceName);
+
 const phoneRegex = /^[0-9+]{9,16}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -26,7 +31,7 @@ export function validateProductFeedback(
     errors.email = "Format email tidak valid";
   }
 
-  if (!payload.province || !INDONESIA_PROVINCES.includes(payload.province as any)) {
+  if (!payload.province || !isValidProvince(payload.province)) {
     errors.province = "Provinsi wajib dipilih dari daftar";
   }
 

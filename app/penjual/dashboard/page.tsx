@@ -9,8 +9,8 @@ import Logo from "@/components/ui/Logo";
 type SessionUser = {
   id: string;
   email: string | null;
-  user_metadata?: Record<string, any>;
-  app_metadata?: Record<string, any>;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
 };
 
 const getRole = (user?: SessionUser | null) =>

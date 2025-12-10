@@ -1,5 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr";
 
+type CookieOptions = {
+  domain?: string;
+  expires?: Date;
+  httpOnly?: boolean;
+  maxAge?: number;
+  path?: string;
+  sameSite?: "lax" | "strict" | "none";
+  secure?: boolean;
+};
+
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +22,7 @@ export function createClient() {
           const cookie = cookies.find((c) => c.trim().startsWith(`${name}=`));
           return cookie ? decodeURIComponent(cookie.split("=")[1]) : null;
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions = {}) {
           // Write cookie to browser
           let cookieString = `${name}=${encodeURIComponent(value)}`;
 
@@ -34,7 +44,7 @@ export function createClient() {
 
           document.cookie = cookieString;
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions = {}) {
           // Delete cookie from browser
           this.set(name, "", { ...options, maxAge: 0 });
         },
