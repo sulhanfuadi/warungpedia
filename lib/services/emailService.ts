@@ -5,6 +5,40 @@ interface EmailResult {
   error?: string;
 }
 
+type TransportConfig = {
+  host?: string;
+  port?: string | number;
+  user?: string;
+  pass?: string;
+};
+
+const FROM_ADDRESS = process.env.SMTP_USER ? `"Warungpedia" <${process.env.SMTP_USER}>` : "Warungpedia <no-reply@warungpedia.id>";
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+function createTransporter(config: TransportConfig = {}) {
+  const host = config.host ?? process.env.SMTP_HOST;
+  const port = Number(config.port ?? process.env.SMTP_PORT ?? 465);
+  const user = config.user ?? process.env.SMTP_USER;
+  const pass = config.pass ?? process.env.SMTP_PASS;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: true,
+    auth: {
+      user,
+      pass,
+    },
+  });
+}
+
 export async function sendRejectionEmail(
   email: string,
   name: string,
@@ -12,18 +46,10 @@ export async function sendRejectionEmail(
   reason: string
 ): Promise<EmailResult> {
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Warungpedia" <${process.env.SMTP_USER}>`,
+      from: FROM_ADDRESS,
       to: email,
       subject: "Pendaftaran Penjual Ditolak - Warungpedia",
       html: `
@@ -75,18 +101,10 @@ export async function sendApprovalEmail(
   loginUrl: string
 ): Promise<EmailResult> {
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Warungpedia" <${process.env.SMTP_USER}>`,
+      from: FROM_ADDRESS,
       to: email,
       subject: "🎉 Selamat! Akun Penjual Anda Telah Diaktifkan - Warungpedia",
       html: `
@@ -128,6 +146,63 @@ export async function sendApprovalEmail(
     return { success: true };
   } catch (error) {
     console.error("❌ Failed to send approval email:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+type ThankYouEmailPayload = {
+  email: string;
+  name?: string;
+  rating: number;
+  comment: string;
+};
+
+export async function sendThankYouEmail({
+  email,
+  name,
+  rating,
+  comment,
+}: ThankYouEmailPayload): Promise<EmailResult> {
+  try {
+    const transporter = createTransporter();
+    const recipientName = name?.trim() || "Pengunjung MartPlace";
+    const safeComment = escapeHtml(comment);
+
+    const mailOptions = {
+      from: FROM_ADDRESS,
+      to: email,
+      subject: "Terima kasih atas ulasan Anda di MartPlace",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #0779FF; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0;">Warungpedia</h1>
+          </div>
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <h2 style="color: #333;">Halo ${recipientName},</h2>
+            <p style="color: #555; line-height: 1.6;">
+              Terima kasih sudah menyempatkan waktu untuk memberikan komentar dan rating ${rating}⭐ terhadap produk kami di MartPlace.
+            </p>
+            <blockquote style="background:#fff; padding:15px; border-left:4px solid #0779FF; margin: 20px 0; color: #555; white-space: pre-wrap;">${safeComment}</blockquote>
+            <p style="color: #555; line-height: 1.6;">
+              Masukan Anda membantu penjual meningkatkan layanan. Jangan ragu kembali dan jelajahi produk lainnya di platform kami.
+            </p>
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+              Email otomatis dari Warungpedia<br>
+              © 2025 Warungpedia. All rights reserved.
+            </p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Thank-you email sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Failed to send thank-you email:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
