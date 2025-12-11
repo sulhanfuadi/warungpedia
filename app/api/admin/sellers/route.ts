@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin.from("sellers").select("*");
 
+    // Filter hanya seller, bukan admin
+    query = query.or("role.eq.seller,role.is.null");
+
     if (status && status !== "ALL") {
       query = query.eq("status", status);
     }
