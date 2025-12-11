@@ -96,9 +96,28 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white">
       <header className="border-b border-[#2f2f2f] bg-[#121212]">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <Logo size="md" variant="white" showText href="/" />
-          <span className="text-sm text-gray-400">Login</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <Logo size="md" variant="white" showText href="/" />
+            <div className="hidden sm:flex flex-col leading-tight text-sm text-gray-300">
+              <span className="font-semibold text-white">Masuk ke Warungpedia</span>
+              <span className="text-xs text-gray-400">Akses dashboard admin & penjual</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
+            >
+              Ke Beranda
+            </a>
+            <a
+              href="/penjual/register"
+              className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
+            >
+              Daftar Penjual
+            </a>
+          </div>
         </div>
       </header>
 
