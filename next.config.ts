@@ -21,9 +21,7 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {},
-  experimental: {
-    serverComponentsExternalPackages: ["pdfkit"],
-  },
+  serverExternalPackages: ["pdfkit"],
 };
 
 export default nextConfig;
