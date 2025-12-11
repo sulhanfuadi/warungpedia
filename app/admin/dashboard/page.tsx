@@ -26,6 +26,16 @@ interface DashboardStats {
   users: number;
   productCategories: ProductCategory[];
   storesByProvince: StoreProvince[];
+  sellerStatusCounts?: {
+    ACTIVE: number;
+    INACTIVE: number;
+    PENDING: number;
+    REJECTED: number;
+  };
+  feedbackStats?: {
+    totalFeedbacks: number;
+    uniqueReviewers: number;
+  };
 }
 
 export default function AdminDashboardPage() {
@@ -132,6 +142,8 @@ export default function AdminDashboardPage() {
         users: data.users ?? 0,
         productCategories: data.productCategories ?? [],
         storesByProvince: data.storesByProvince ?? [],
+        sellerStatusCounts: data.sellerStatusCounts ?? { ACTIVE: 0, INACTIVE: 0, PENDING: 0, REJECTED: 0 },
+        feedbackStats: data.feedbackStats ?? { totalFeedbacks: 0, uniqueReviewers: 0 },
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,7 +251,7 @@ export default function AdminDashboardPage() {
         <p className="text-gray-400 mb-8">Ringkasan aktivitas penjual & produk</p>
 
         {/* SUMMARY CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
             <p className="text-gray-400 text-sm">Total Penjual</p>
             <h3 className="text-3xl font-bold text-white">{stats.users}</h3>
@@ -253,6 +265,52 @@ export default function AdminDashboardPage() {
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
             <p className="text-gray-400 text-sm">Wilayah Penjual</p>
             <h3 className="text-3xl font-bold text-white">{stats.storesByProvince.length}</h3>
+          </div>
+
+          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <p className="text-gray-300 text-sm">Penjual Aktif</p>
+              <span className="rounded-full border border-[#2f4460] bg-[#1b2737] px-2 py-1 text-[11px] text-[#8cb7ff]">
+                Status
+              </span>
+            </div>
+            <h3 className="text-3xl font-bold text-white mt-2">
+              {stats.sellerStatusCounts?.ACTIVE ?? 0}
+            </h3>
+            <div className="mt-3 space-y-1 text-xs text-gray-300">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full bg-[#facc15]" />
+                Non-aktif: {stats.sellerStatusCounts?.INACTIVE ?? 0}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full bg-[#f97316]" />
+                Pending/Reject:{" "}
+                {(stats.sellerStatusCounts?.PENDING ?? 0) + (stats.sellerStatusCounts?.REJECTED ?? 0)}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <p className="text-gray-300 text-sm">Pengunjung Berkomentar</p>
+              <span className="rounded-full border border-[#234433] bg-[#182922] px-2 py-1 text-[11px] text-[#93e2b6]">
+                Feedback
+              </span>
+            </div>
+            <h3 className="text-3xl font-bold text-white mt-2">
+              {stats.feedbackStats?.uniqueReviewers ?? 0}
+            </h3>
+            <p className="text-xs text-gray-300 mt-3">
+              Total komentar/rating:{" "}
+              <span className="font-semibold text-[#93e2b6]">
+                {stats.feedbackStats?.totalFeedbacks ?? 0}
+              </span>
+            </p>
+            {(stats.feedbackStats?.totalFeedbacks ?? 0) === 0 && (
+              <p className="text-[11px] text-gray-500 mt-2">
+                Belum ada feedback. Dorong pengunjung untuk meninggalkan rating.
+              </p>
+            )}
           </div>
         </div>
 
@@ -308,7 +366,7 @@ export default function AdminDashboardPage() {
             <h3 className="text-xl font-bold text-white mb-4">Distribusi Kategori Produk</h3>
             <div className="h-80 pt-4">
               {categoryLegend.length ? (
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%" minHeight={320}>
                   <PieChart>
                     <Pie
                       data={categoryLegend}
@@ -384,7 +442,7 @@ export default function AdminDashboardPage() {
           <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
             <h3 className="text-xl font-bold text-white mb-4">Penjual per Provinsi</h3>
             <div className="h-80 pt-4">
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%" minHeight={320}>
                 <BarChart data={provinceData} margin={{ top: 10, right: 16, left: 4, bottom: 24 }}>
                   <defs>
                     <linearGradient id="provinceBar" x1="0" y1="0" x2="0" y2="1">

@@ -241,6 +241,32 @@ export default function RegisterPage() {
       className="min-h-screen bg-[#1a1a1a] flex flex-col"
       suppressHydrationWarning
     >
+      <header className="border-b border-[#2f2f2f] bg-[#121212]">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <Logo size="md" variant="white" showText href="/" />
+            <div className="hidden sm:flex flex-col leading-tight text-sm text-gray-300">
+              <span className="font-semibold text-white">Daftar Penjual</span>
+              <span className="text-xs text-gray-400">Bangun toko Anda di Warungpedia</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
+            >
+              Ke Beranda
+            </a>
+            <a
+              href="/login"
+              className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
+            >
+              Login
+            </a>
+          </div>
+        </div>
+      </header>
+
       <div className="flex-grow py-12 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header dengan Logo - Tampil di Step 1 */}

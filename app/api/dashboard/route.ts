@@ -3,7 +3,7 @@ import { getSellerDashboardStats } from "@/lib/controllers/sellerDashboardContro
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type CategoryRow = { category: string | null };
-type SellerRow = { id: string; pic_province: string | null };
+type SellerRow = { id: string; pic_province: string | null; status?: string | null };
 
 function aggregateCategories(rows: CategoryRow[]) {
   const map = new Map<string, { category: string; total: number }>();
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     const sellerId = searchParams.get("sellerId");
 
     if (sellerId) {
-      console.log("📊 Fetching dashboard for seller:", sellerId);
+      console.log("dY\"S Fetching dashboard for seller:", sellerId);
       const data = await getSellerDashboardStats(sellerId);
       if (!data) {
         return NextResponse.json(
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
     const [{ data: sellers, error: sellersError }, { data: products, error: productsError }] =
       await Promise.all([
-        supabaseAdmin.from("sellers").select("id, pic_province"),
+        supabaseAdmin.from("sellers").select("id, pic_province, status"),
         supabaseAdmin.from("products").select("category"),
       ]);
 
@@ -71,13 +71,42 @@ export async function GET(req: NextRequest) {
       throw new Error(`Gagal mengambil data produk: ${productsError.message}`);
     }
 
+    // Hitung status seller
+    const statusCounts = { ACTIVE: 0, INACTIVE: 0, PENDING: 0, REJECTED: 0 };
+    (sellers ?? []).forEach((s) => {
+      const key = (s.status || "").toUpperCase();
+      if (key === "ACTIVE") statusCounts.ACTIVE += 1;
+      else if (key === "INACTIVE") statusCounts.INACTIVE += 1;
+      else if (key === "REJECTED") statusCounts.REJECTED += 1;
+      else statusCounts.PENDING += 1;
+    });
+
+    // Metrik feedback
+    const { data: feedbacks, error: feedbackError } = await supabaseAdmin
+      .from("product_feedbacks")
+      .select("email, rating");
+
+    if (feedbackError) {
+      console.warn("ƒsÿ‹,? Feedback query error:", feedbackError.message);
+    }
+
+    const totalFeedbacks = feedbacks?.length ?? 0;
+    const uniqueReviewers =
+      feedbacks?.reduce((set, item) => (item.email ? set.add(item.email) : set), new Set<string>()).size ?? 0;
+
     const productCategories = aggregateCategories(products ?? []);
     const storesByProvince = aggregateProvinces(sellers ?? []);
     const users = sellers?.length ?? 0;
 
-    return NextResponse.json({ users, productCategories, storesByProvince });
+    return NextResponse.json({
+      users,
+      productCategories,
+      storesByProvince,
+      sellerStatusCounts: statusCounts,
+      feedbackStats: { totalFeedbacks, uniqueReviewers },
+    });
   } catch (error) {
-    console.error("❌ Dashboard API Error:", error);
+    console.error("ƒ?O Dashboard API Error:", error);
     return NextResponse.json(
       {
         error: "Gagal memuat dashboard",
