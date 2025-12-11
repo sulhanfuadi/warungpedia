@@ -4,6 +4,14 @@ import type {
   ProductFeedback,
 } from "@/lib/models/productFeedback";
 
+export class DuplicateFeedbackError extends Error {
+  status: number;
+  constructor(message: string, status = 409) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export async function listProductFeedbacks(
   productId: string,
 ): Promise<ProductFeedback[]> {
@@ -23,6 +31,21 @@ export async function listProductFeedbacks(
 export async function createProductFeedback(
   payload: NewProductFeedbackInput,
 ): Promise<ProductFeedback> {
+  // Ensure email is unique per product to prevent duplicate submissions
+  const { data: existing } = await supabaseAdmin
+    .from("product_feedbacks")
+    .select("id")
+    .eq("product_id", payload.productId)
+    .eq("email", payload.email)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    throw new DuplicateFeedbackError(
+      "Email ini sudah pernah digunakan untuk memberi komentar/rating pada produk ini. Gunakan email lain.",
+    );
+  }
+
   const { data, error } = await supabaseAdmin
     .from("product_feedbacks")
     .insert({
