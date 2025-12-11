@@ -1,47 +1,36 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-interface SellerRow {
-  id: string;
-  store_name: string | null;
-  pic_email: string | null;
-  pic_name: string | null;
-  pic_phone: string | null;
-  pic_province: string | null;
-  status: string | null;
-  created_at: string;
-  role: string | null;
-}
-
 interface SellerStatusRecord {
-  accountEmail: string;
-  picEmail: string;
+  namaUser: string; // Email PIC sebagai Nama User
   picName: string;
   storeName: string;
   statusLabel: "Aktif" | "Tidak Aktif";
 }
 
-const PAGE_SIZE: [number, number] = [842, 595];
+const PAGE_SIZE: [number, number] = [842, 595]; // Landscape A4
 const MARGIN_X = 40;
 const HEADER_BG = rgb(7 / 255, 121 / 255, 255 / 255);
 const HEADER_TEXT = rgb(1, 1, 1);
 const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
+// Kolom sesuai format: No | Nama User (Email PIC) | Nama PIC | Nama Toko | Status
 const columns = [
-  { key: "no", title: "No.", width: 30 },
-  { key: "email", title: "Email", width: 140 },
-  { key: "picEmail", title: "Email PIC", width: 140 },
-  { key: "picName", title: "Nama PIC", width: 120 },
-  { key: "store", title: "Nama Toko", width: 160 },
-  { key: "status", title: "Status", width: 70 },
+  { key: "no", title: "No", width: 40 },
+  { key: "namaUser", title: "Nama User (Email PIC)", width: 220 },
+  { key: "picName", title: "Nama PIC", width: 180 },
+  { key: "store", title: "Nama Toko", width: 220 },
+  { key: "status", title: "Status", width: 100 },
 ] as const;
 
 type ColumnKey = (typeof columns)[number]["key"];
 
-const columnGetter: Record<ColumnKey, (record: SellerStatusRecord, index: number) => string> = {
+const columnGetter: Record<
+  ColumnKey,
+  (record: SellerStatusRecord, index: number) => string
+> = {
   no: (_record, index) => (index + 1).toString(),
-  email: (record) => record.accountEmail,
-  picEmail: (record) => record.picEmail,
+  namaUser: (record) => record.namaUser,
   picName: (record) => record.picName,
   store: (record) => record.storeName,
   status: (record) => record.statusLabel,
@@ -58,20 +47,6 @@ function formatDate(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return dateFormatter.format(date);
-}
-
-async function resolveAccountEmail(userId: string, fallback: string): Promise<string> {
-  try {
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (error) {
-      console.warn("[SellerStatusPDF] Failed to fetch auth user", error.message);
-      return fallback;
-    }
-    return data?.user?.email || fallback;
-  } catch (error) {
-    console.warn("[SellerStatusPDF] Unexpected auth lookup error", error);
-    return fallback;
-  }
 }
 
 function drawFooter(options: {
@@ -148,13 +123,16 @@ function drawRow(options: {
     });
 
     const rawText = columnGetter[column.key](record, index);
-    const truncated = rawText.length > 40 ? `${rawText.slice(0, 37)}...` : rawText;
+    const truncated =
+      rawText.length > 45 ? `${rawText.slice(0, 42)}...` : rawText;
+
+    // Status column gets colored text
     const textColor =
       column.key === "status"
         ? record.statusLabel === "Aktif"
-          ? rgb(0.05, 0.45, 0.2)
-          : rgb(0.7, 0.2, 0.2)
-        : rgb(0.15, 0.15, 0.15);
+          ? rgb(0.05, 0.45, 0.2) // Green for active
+          : rgb(0.7, 0.2, 0.2) // Red for inactive
+        : rgb(0.15, 0.15, 0.15); // Default dark
 
     page.drawText(truncated, {
       x: currentX + 6,
@@ -173,7 +151,7 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
   const { data, error } = await supabaseAdmin
     .from("sellers")
     .select(
-      "id, store_name, pic_email, pic_name, pic_phone, pic_province, status, created_at, role",
+      "id, store_name, pic_email, pic_name, pic_phone, pic_province, status, created_at, role"
     )
     .order("created_at", { ascending: true });
 
@@ -182,39 +160,28 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
   }
 
   const sellers = data ?? [];
-  const emailCache = new Map<string, string>();
   const enriched: SellerStatusRecord[] = [];
 
   for (const seller of sellers) {
-    const fallbackEmail = seller.pic_email ?? "-";
-    let accountEmail = fallbackEmail;
-
-    if (seller.id) {
-      if (emailCache.has(seller.id)) {
-        accountEmail = emailCache.get(seller.id)!;
-      } else {
-        accountEmail = await resolveAccountEmail(seller.id, fallbackEmail);
-        emailCache.set(seller.id, accountEmail);
-      }
-    }
-
     enriched.push({
-      accountEmail,
-      picEmail: fallbackEmail,
+      namaUser: seller.pic_email ?? "-", // Email PIC sebagai Nama User
       picName: seller.pic_name ?? "-",
       storeName: seller.store_name ?? "-",
       statusLabel: seller.status === "ACTIVE" ? "Aktif" : "Tidak Aktif",
     });
   }
 
+  // Sort: Aktif dulu, lalu Tidak Aktif, kemudian by store name
   enriched.sort((a, b) => {
     if (a.statusLabel === b.statusLabel) {
-      return a.accountEmail.localeCompare(b.accountEmail, "id", { sensitivity: "base" });
+      return a.storeName.localeCompare(b.storeName);
     }
     return a.statusLabel === "Aktif" ? -1 : 1;
   });
 
-  const activeCount = enriched.filter((record) => record.statusLabel === "Aktif").length;
+  const activeCount = enriched.filter(
+    (record) => record.statusLabel === "Aktif"
+  ).length;
   const inactiveCount = enriched.length - activeCount;
 
   const pdfDoc = await PDFDocument.create();
@@ -237,23 +204,31 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
     ({ width, height } = page.getSize());
     cursorY = height - 50;
 
-    page.drawText(
-      isContinuationHeader
-        ? "Laporan Akun Penjual (lanjutan)"
-        : "Laporan Akun Penjual (Aktif & Tidak Aktif)",
-      {
+    if (isContinuationHeader) {
+      page.drawText("Warungpedia Admin Platform", {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 12,
+        font: headerFont,
+        color: rgb(0.07, 0.48, 0.95),
+      });
+      cursorY -= 18;
+
+      page.drawText("Laporan Akun Penjual (lanjutan)", {
         x: MARGIN_X,
         y: cursorY,
         size: 14,
         font: headerFont,
         color: rgb(0.15, 0.15, 0.15),
-      },
-    );
-    cursorY -= 28;
-    drawTableHeader({ page, headerFont, startY: cursorY });
-    cursorY -= 28;
+      });
+      cursorY -= 25;
+
+      drawTableHeader({ page, headerFont, startY: cursorY });
+      cursorY -= 28;
+    }
   };
 
+  // ==================== HEADER ====================
   page.drawText("Warungpedia Admin Platform", {
     x: MARGIN_X,
     y: cursorY,
@@ -272,9 +247,10 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
   });
   cursorY -= 30;
 
+  // ==================== SUMMARY INFO ====================
   const summaryLines = [
     `Tanggal dibuat : ${formatDate(new Date().toISOString())}`,
-    `Total penjual : ${enriched.length} | Aktif: ${activeCount} | Tidak Aktif: ${inactiveCount}`,
+    `Total penjual  : ${enriched.length} | Aktif: ${activeCount} | Tidak Aktif: ${inactiveCount}`,
   ];
 
   summaryLines.forEach((line) => {
@@ -283,19 +259,21 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
       y: cursorY,
       size: 10,
       font: bodyFont,
-      color: rgb(0.25, 0.25, 0.25),
+      color: rgb(0.3, 0.3, 0.3),
     });
-    cursorY -= 16;
+    cursorY -= 14;
   });
 
   cursorY -= 10;
+
+  // ==================== TABLE ====================
   drawTableHeader({ page, headerFont, startY: cursorY });
   cursorY -= 28;
 
   enriched.forEach((record, index) => {
-    ensureSpace(30, true);
+    ensureSpace(26, true);
     drawRow({ page, font: bodyFont, record, index, startY: cursorY });
-    cursorY -= 24;
+    cursorY -= 22;
   });
 
   drawFooter({ page, font: bodyFont, width, pageNumber });
