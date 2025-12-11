@@ -3,6 +3,11 @@
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { testSupabaseConnection } from "@/lib/testSupabase";
 import Logo from "@/components/ui/Logo";
+import Link from "next/link";
+import {
+  RegionSelect,
+  useRegionSelect,
+} from "@/components/shared/RegionSelect";
 
 interface PasswordStrength {
   hasMinLength: boolean;
@@ -35,6 +40,40 @@ export default function RegisterPage() {
     picCity: "",
     picProvince: "",
     picKtpNumber: "",
+  });
+
+  // Hook untuk region select dengan cascade
+  const regionSelect = useRegionSelect({
+    onProvinceChange: (value) => {
+      setFormData((prev) => ({
+        ...prev,
+        picProvince: value,
+        picCity: "",
+        picDistrict: "",
+        picVillage: "",
+      }));
+    },
+    onCityChange: (value) => {
+      setFormData((prev) => ({
+        ...prev,
+        picCity: value,
+        picDistrict: "",
+        picVillage: "",
+      }));
+    },
+    onDistrictChange: (value) => {
+      setFormData((prev) => ({
+        ...prev,
+        picDistrict: value,
+        picVillage: "",
+      }));
+    },
+    onVillageChange: (value) => {
+      setFormData((prev) => ({
+        ...prev,
+        picVillage: value,
+      }));
+    },
   });
 
   const [files, setFiles] = useState<{
@@ -247,22 +286,24 @@ export default function RegisterPage() {
             <Logo size="md" variant="white" showText href="/" />
             <div className="hidden sm:flex flex-col leading-tight text-sm text-gray-300">
               <span className="font-semibold text-white">Daftar Penjual</span>
-              <span className="text-xs text-gray-400">Bangun toko Anda di Warungpedia</span>
+              <span className="text-xs text-gray-400">
+                Bangun toko Anda di Warungpedia
+              </span>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="/"
-              className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
-            >
-              Ke Beranda
-            </a>
-            <a
-              href="/login"
-              className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
-            >
-              Login
-            </a>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
+              >
+                Ke Beranda
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
+              >
+                Login
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -727,65 +768,68 @@ export default function RegisterPage() {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block mb-2 font-medium text-white">
-                            Kelurahan*
-                          </label>
-                          <input
-                            type="text"
-                            name="picVillage"
-                            value={formData.picVillage}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
-                            placeholder="Nama kelurahan"
-                          />
-                        </div>
+                        {/* Provinsi - Pilih pertama */}
+                        <RegionSelect
+                          label="Provinsi"
+                          name="picProvince"
+                          value={formData.picProvince}
+                          onChange={regionSelect.handleProvinceChange}
+                          options={regionSelect.provinces}
+                          loading={regionSelect.loadingProvinces}
+                          required
+                          placeholder="Pilih Provinsi"
+                        />
 
-                        <div>
-                          <label className="block mb-2 font-medium text-white">
-                            Kecamatan*
-                          </label>
-                          <input
-                            type="text"
-                            name="picDistrict"
-                            value={formData.picDistrict}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
-                            placeholder="Nama kecamatan"
-                          />
-                        </div>
+                        {/* Kab/Kota */}
+                        <RegionSelect
+                          label="Kab/Kota"
+                          name="picCity"
+                          value={formData.picCity}
+                          onChange={regionSelect.handleRegencyChange}
+                          options={regionSelect.regencies}
+                          loading={regionSelect.loadingRegencies}
+                          disabled={!formData.picProvince}
+                          required
+                          placeholder={
+                            formData.picProvince
+                              ? "Pilih Kabupaten/Kota"
+                              : "Pilih Provinsi terlebih dahulu"
+                          }
+                        />
 
-                        <div>
-                          <label className="block mb-2 font-medium text-white">
-                            Kab/Kota*
-                          </label>
-                          <input
-                            type="text"
-                            name="picCity"
-                            value={formData.picCity}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
-                            placeholder="Nama kota/kabupaten"
-                          />
-                        </div>
+                        {/* Kecamatan */}
+                        <RegionSelect
+                          label="Kecamatan"
+                          name="picDistrict"
+                          value={formData.picDistrict}
+                          onChange={regionSelect.handleDistrictChange}
+                          options={regionSelect.districts}
+                          loading={regionSelect.loadingDistricts}
+                          disabled={!formData.picCity}
+                          required
+                          placeholder={
+                            formData.picCity
+                              ? "Pilih Kecamatan"
+                              : "Pilih Kab/Kota terlebih dahulu"
+                          }
+                        />
 
-                        <div>
-                          <label className="block mb-2 font-medium text-white">
-                            Provinsi*
-                          </label>
-                          <input
-                            type="text"
-                            name="picProvince"
-                            value={formData.picProvince}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#0779FF] focus:border-transparent"
-                            placeholder="Nama provinsi"
-                          />
-                        </div>
+                        {/* Kelurahan */}
+                        <RegionSelect
+                          label="Kelurahan"
+                          name="picVillage"
+                          value={formData.picVillage}
+                          onChange={regionSelect.handleVillageChange}
+                          options={regionSelect.villages}
+                          loading={regionSelect.loadingVillages}
+                          disabled={!formData.picDistrict}
+                          required
+                          placeholder={
+                            formData.picDistrict
+                              ? "Pilih Kelurahan"
+                              : "Pilih Kecamatan terlebih dahulu"
+                          }
+                        />
                       </div>
                     </fieldset>
                     {/* Dokumen Legalitas */}

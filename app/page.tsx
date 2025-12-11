@@ -28,7 +28,11 @@ type ProductCard = {
 };
 
 const formatCurrency = (n: number) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 export default function HomePage() {
   const [products, setProducts] = useState<ProductCard[]>([]);
@@ -84,9 +88,11 @@ export default function HomePage() {
       syncSession((data.session?.user as UserLike) || null);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSession((session?.user as UserLike) || null);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        syncSession((session?.user as UserLike) || null);
+      }
+    );
 
     return () => {
       active = false;
@@ -96,7 +102,7 @@ export default function HomePage() {
 
   const activeFilters = useMemo(
     () => qProduct || qStore || qCategory || qLocation,
-    [qProduct, qStore, qCategory, qLocation],
+    [qProduct, qStore, qCategory, qLocation]
   );
 
   const getMetaString = (key: string) => {
@@ -125,7 +131,8 @@ export default function HomePage() {
           <Logo size="md" variant="white" showText href="/" />
           <div className="flex items-center gap-4 text-sm text-gray-400">
             <span>
-              Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau lokasi
+              Jelajahi produk UMKM • Cari nama produk, toko, kategori, atau
+              lokasi
             </span>
             {authChecking ? (
               <div className="h-10 w-24 animate-pulse rounded-full bg-[#1f1f1f]" />
@@ -148,7 +155,9 @@ export default function HomePage() {
                   </div>
                 )}
                 <div className="hidden text-left sm:block">
-                  <p className="text-xs font-semibold text-white">{displayName}</p>
+                  <p className="text-xs font-semibold text-white">
+                    {displayName}
+                  </p>
                   <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
                     {userRole === "admin" ? "Admin" : "Seller"}
                   </p>
@@ -175,30 +184,35 @@ export default function HomePage() {
                 onChange={(e) => setQProduct(e.target.value)}
                 placeholder="Nama produk"
                 className="rounded-xl border border-[#2f2f2f] bg-[#161616] px-4 py-3 text-sm text-white placeholder-gray-500 transition focus:border-[#0779FF] focus:outline-none focus:ring-1 focus:ring-[#0779FF]"
+                suppressHydrationWarning
               />
               <input
                 value={qStore}
                 onChange={(e) => setQStore(e.target.value)}
                 placeholder="Nama toko"
                 className="rounded-xl border border-[#2f2f2f] bg-[#161616] px-4 py-3 text-sm text-white placeholder-gray-500 transition focus:border-[#0779FF] focus:outline-none focus:ring-1 focus:ring-[#0779FF]"
+                suppressHydrationWarning
               />
               <input
                 value={qCategory}
                 onChange={(e) => setQCategory(e.target.value)}
                 placeholder="Kategori"
                 className="rounded-xl border border-[#2f2f2f] bg-[#161616] px-4 py-3 text-sm text-white placeholder-gray-500 transition focus:border-[#0779FF] focus:outline-none focus:ring-1 focus:ring-[#0779FF]"
+                suppressHydrationWarning
               />
               <input
                 value={qLocation}
                 onChange={(e) => setQLocation(e.target.value)}
                 placeholder="Lokasi (kota/provinsi)"
                 className="rounded-xl border border-[#2f2f2f] bg-[#161616] px-4 py-3 text-sm text-white placeholder-gray-500 transition focus:border-[#0779FF] focus:outline-none focus:ring-1 focus:ring-[#0779FF]"
+                suppressHydrationWarning
               />
             </div>
             <div className="flex gap-3 lg:w-auto">
               <button
                 onClick={fetchData}
                 className="rounded-full bg-[#0779FF] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-[#0669dd]"
+                suppressHydrationWarning
               >
                 Cari
               </button>
@@ -254,15 +268,21 @@ export default function HomePage() {
                   {p.seller?.pic_city && (
                     <span className="rounded-full bg-[#1f1f1f] px-2 py-1 text-gray-300">
                       {p.seller.pic_city}
-                      {p.seller.pic_province ? `, ${p.seller.pic_province}` : ""}
+                      {p.seller.pic_province
+                        ? `, ${p.seller.pic_province}`
+                        : ""}
                     </span>
                   )}
                 </div>
-                <h3 className="mt-3 line-clamp-2 text-lg font-semibold text-white">{p.name}</h3>
+                <h3 className="mt-3 line-clamp-2 text-lg font-semibold text-white">
+                  {p.name}
+                </h3>
                 <p className="mt-1 text-sm text-gray-400">
                   {p.seller?.store_name || "Toko"}
                 </p>
-                <p className="mt-2 text-xl font-bold text-[#0779FF]">{formatCurrency(p.price)}</p>
+                <p className="mt-2 text-xl font-bold text-[#0779FF]">
+                  {formatCurrency(p.price)}
+                </p>
                 {p.product_variants && p.product_variants.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {p.product_variants.slice(0, 4).map((v) => (
@@ -270,7 +290,9 @@ export default function HomePage() {
                         key={v.id}
                         className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-2 py-1 text-xs text-gray-300"
                       >
-                        {v.option_group ? `${v.option_group}: ${v.name}` : v.name}
+                        {v.option_group
+                          ? `${v.option_group}: ${v.name}`
+                          : v.name}
                       </span>
                     ))}
                     {p.product_variants.length > 4 && (
