@@ -16,8 +16,8 @@ interface SellerRow {
 interface SellerStatusRecord {
   accountEmail: string;
   picEmail: string;
+  picName: string;
   storeName: string;
-  createdAt: string;
   statusLabel: "Aktif" | "Tidak Aktif";
 }
 
@@ -28,12 +28,12 @@ const HEADER_TEXT = rgb(1, 1, 1);
 const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
 const columns = [
-  { key: "no", title: "No.", width: 36 },
-  { key: "email", title: "Email", width: 170 },
-  { key: "picEmail", title: "Email PIC", width: 170 },
-  { key: "status", title: "Status", width: 90 },
-  { key: "created", title: "Tanggal Dibuat", width: 130 },
-  { key: "store", title: "Nama Toko", width: 180 },
+  { key: "no", title: "No.", width: 30 },
+  { key: "email", title: "Email", width: 140 },
+  { key: "picEmail", title: "Email PIC", width: 140 },
+  { key: "picName", title: "Nama PIC", width: 120 },
+  { key: "store", title: "Nama Toko", width: 160 },
+  { key: "status", title: "Status", width: 70 },
 ] as const;
 
 type ColumnKey = (typeof columns)[number]["key"];
@@ -42,9 +42,9 @@ const columnGetter: Record<ColumnKey, (record: SellerStatusRecord, index: number
   no: (_record, index) => (index + 1).toString(),
   email: (record) => record.accountEmail,
   picEmail: (record) => record.picEmail,
-  status: (record) => record.statusLabel,
-  created: (record) => record.createdAt,
+  picName: (record) => record.picName,
   store: (record) => record.storeName,
+  status: (record) => record.statusLabel,
 };
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -201,8 +201,8 @@ export async function generateSellerStatusReport(): Promise<Uint8Array> {
     enriched.push({
       accountEmail,
       picEmail: fallbackEmail,
+      picName: seller.pic_name ?? "-",
       storeName: seller.store_name ?? "-",
-      createdAt: formatDate(seller.created_at),
       statusLabel: seller.status === "ACTIVE" ? "Aktif" : "Tidak Aktif",
     });
   }
