@@ -10,7 +10,7 @@ export async function GET() {
     const pdfBytes = await generateAdminProductRatingReport();
     const filename = `Laporan-Produk-Rating-${new Date().toISOString().split("T")[0]}.pdf`;
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

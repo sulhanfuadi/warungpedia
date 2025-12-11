@@ -22,22 +22,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const filterStatus = searchParams.get("status") || "ALL";
     const format = searchParams.get("format") || "json";
-
     console.log(`🔵 [PDF Report] Filter: ${filterStatus}, Format: ${format}`);
 
     // Fetch sellers dari database
-    let query = supabaseAdmin.from<Seller>("sellers").select("*");
+    let sellersQuery = supabaseAdmin.from("sellers").select("*");
 
     // Apply status filter
     if (filterStatus !== "ALL" && filterStatus !== "PENDING") {
-      query = query.eq("status", filterStatus);
+      sellersQuery = sellersQuery.eq("status", filterStatus);
     } else if (filterStatus === "PENDING") {
-      query = query.eq("status", "PENDING");
+      sellersQuery = sellersQuery.eq("status", "PENDING");
     }
 
     console.log(`🔵 [PDF Report] Fetching sellers from database...`);
     
-    const { data: sellers, error } = await query.order("created_at", {
+    const { data: sellers, error } = await sellersQuery.order("created_at", {
       ascending: false,
     });
 

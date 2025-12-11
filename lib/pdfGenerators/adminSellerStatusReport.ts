@@ -29,7 +29,7 @@ const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
 const columns = [
   { key: "no", title: "No.", width: 36 },
-  { key: "email", title: "Email Akun", width: 170 },
+  { key: "email", title: "Email", width: 170 },
   { key: "picEmail", title: "Email PIC", width: 170 },
   { key: "status", title: "Status", width: 90 },
   { key: "created", title: "Tanggal Dibuat", width: 130 },
@@ -171,7 +171,7 @@ function drawRow(options: {
 
 export async function generateSellerStatusReport(): Promise<Uint8Array> {
   const { data, error } = await supabaseAdmin
-    .from<SellerRow>("sellers")
+    .from("sellers")
     .select(
       "id, store_name, pic_email, pic_name, pic_phone, pic_province, status, created_at, role",
     )
