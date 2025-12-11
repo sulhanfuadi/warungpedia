@@ -51,6 +51,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false); // Tambahkan state ini
   const [downloadingStatusReport, setDownloadingStatusReport] = useState(false);
   const [downloadingProvinceReport, setDownloadingProvinceReport] =
     useState(false);
@@ -250,6 +251,21 @@ export default function AdminDashboardPage() {
     }))
     .sort((a, b) => b.total - a.total);
 
+  // Tambahkan fungsi handleLogout
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      // Coba signOut, tapi abaikan error "Auth session missing!"
+      await supabase.auth.signOut();
+    } catch (err) {
+      // Ignore - kita akan redirect bagaimanapun
+      console.warn("Logout:", err);
+    } finally {
+      // Selalu redirect ke login page dengan full page reload
+      window.location.href = "/login";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
       {/* HEADER */}
@@ -287,13 +303,11 @@ export default function AdminDashboardPage() {
               Laporan Produk
             </a>
             <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.replace("/login");
-              }}
-              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Logout
+              {loggingOut ? "Logging out..." : "Logout"}
             </button>
           </nav>
         </div>

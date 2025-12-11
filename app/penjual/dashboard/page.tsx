@@ -24,6 +24,7 @@ export default function SellerDashboardPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -229,6 +230,17 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Logout:", err);
+    } finally {
+      window.location.href = "/login";
+    }
+  };
+
   if (authChecking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white">
@@ -264,13 +276,11 @@ export default function SellerDashboardPage() {
               Upload Produk
             </Link>
             <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.replace("/login");
-              }}
-              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-red-500 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Logout
+              {loggingOut ? "Logging out..." : "Logout"}
             </button>
           </nav>
         </div>
@@ -351,9 +361,7 @@ export default function SellerDashboardPage() {
                     disabled={isDownloading}
                     className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isDownloading
-                      ? "Mengunduh laporan..."
-                      : "Download Rating"}
+                    {isDownloading ? "Mengunduh laporan..." : "Download Rating"}
                   </button>
                 </div>
               </div>
