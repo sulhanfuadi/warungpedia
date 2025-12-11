@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -11,8 +17,16 @@ import {
   BarElement,
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
+import IndonesiaMapChart from "@/components/shared/IndonesiaMapChart";
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement
+);
 
 export type SellerDashboardChartsProps = {
   sellerId: string;
@@ -24,7 +38,9 @@ export type SellerDashboardResponse = {
   provinceDistribution: { province: string; total: number }[];
 };
 
-export default function SellerDashboardCharts({ sellerId }: SellerDashboardChartsProps) {
+export default function SellerDashboardCharts({
+  sellerId,
+}: SellerDashboardChartsProps) {
   const [data, setData] = useState<SellerDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +49,9 @@ export default function SellerDashboardCharts({ sellerId }: SellerDashboardChart
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/penjual/dashboard/insights?sellerId=${sellerId}`);
+      const res = await fetch(
+        `/api/penjual/dashboard/insights?sellerId=${sellerId}`
+      );
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json.error || "Gagal memuat data dashboard");
@@ -70,8 +88,16 @@ export default function SellerDashboardCharts({ sellerId }: SellerDashboardChart
 
   const ratingChart = useMemo(() => {
     if (!data?.ratingDistribution?.length) return null;
-    const palette = ["#00c48c", "#3dd598", "#ffc542", "#ff8f6b", "#ff5f56"].reverse();
-    const sorted = [...data.ratingDistribution].sort((a, b) => a.rating - b.rating);
+    const palette = [
+      "#00c48c",
+      "#3dd598",
+      "#ffc542",
+      "#ff8f6b",
+      "#ff5f56",
+    ].reverse();
+    const sorted = [...data.ratingDistribution].sort(
+      (a, b) => a.rating - b.rating
+    );
     return {
       labels: sorted.map((item) => `${item.rating} Bintang`),
       datasets: [
@@ -85,22 +111,7 @@ export default function SellerDashboardCharts({ sellerId }: SellerDashboardChart
     };
   }, [data]);
 
-  const provinceChart = useMemo(() => {
-    if (!data?.provinceDistribution?.length) return null;
-    const sorted = [...data.provinceDistribution].sort((a, b) => b.total - a.total).slice(0, 8);
-    return {
-      labels: sorted.map((item) => item.province),
-      datasets: [
-        {
-          label: "Total Reviewer",
-          data: sorted.map((item) => item.total),
-          backgroundColor: "rgba(255, 255, 255, 0.2)",
-          borderColor: "rgba(255, 255, 255, 0.8)",
-          borderWidth: 1,
-        },
-      ],
-    };
-  }, [data]);
+  // Hapus provinceChart useMemo karena kita akan pakai data langsung ke Map
 
   if (loading) {
     return (
@@ -128,22 +139,36 @@ export default function SellerDashboardCharts({ sellerId }: SellerDashboardChart
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        <SummaryCard title="Total Produk" value={data.stockDistribution.length.toString()} />
+        <SummaryCard
+          title="Total Produk"
+          value={data.stockDistribution.length.toString()}
+        />
         <SummaryCard
           title="Total Reviewer"
-          value={data.provinceDistribution.reduce((sum, item) => sum + item.total, 0).toString()}
+          value={data.provinceDistribution
+            .reduce((sum, item) => sum + item.total, 0)
+            .toString()}
         />
         <SummaryCard
           title="Nilai Rating Terekam"
           value={
-            data.ratingDistribution.reduce((sum, item) => sum + item.rating * item.total, 0) /
-            Math.max(1, data.ratingDistribution.reduce((sum, item) => sum + item.total, 0))
+            data.ratingDistribution.reduce(
+              (sum, item) => sum + item.rating * item.total,
+              0
+            ) /
+            Math.max(
+              1,
+              data.ratingDistribution.reduce((sum, item) => sum + item.total, 0)
+            )
           }
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Sebaran Stok Produk" subtitle="Bar chart stok per produk">
+        <ChartCard
+          title="Sebaran Stok Produk"
+          subtitle="Bar chart stok per produk"
+        >
           {stockChart ? (
             <Bar
               data={stockChart}
@@ -183,35 +208,39 @@ export default function SellerDashboardCharts({ sellerId }: SellerDashboardChart
         </ChartCard>
       </div>
 
-      <ChartCard title="Sebaran Provinsi Perating" subtitle="Top 8 provinsi">
-        {provinceChart ? (
-          <Bar
-            data={provinceChart}
-            options={{
-              indexAxis: "y",
-              responsive: true,
-              plugins: {
-                legend: { display: false },
-              },
-              scales: {
-                x: {
-                  ticks: { color: "#b3c2ff" },
-                },
-                y: {
-                  ticks: { color: "#b3c2ff" },
-                },
-              },
-            }}
+      {/* Ganti ChartCard Sebaran Provinsi dengan Peta */}
+      <div className="mt-6 rounded-2xl border border-[#2f2f2f] bg-[#151515] p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-white">
+            Sebaran Provinsi Perating
+          </h3>
+          <p className="text-sm text-gray-400">
+            Peta sebaran asal provinsi reviewer
+          </p>
+        </div>
+        {data.provinceDistribution && data.provinceDistribution.length > 0 ? (
+          <IndonesiaMapChart
+            data={data.provinceDistribution.map((p) => ({
+              province: p.province,
+              count: p.total,
+            }))}
+            label="Reviewer"
           />
         ) : (
           <EmptyState message="Belum ada data provinsi" />
         )}
-      </ChartCard>
+      </div>
     </div>
   );
 }
 
-function SummaryCard({ title, value }: { title: string; value: number | string }) {
+function SummaryCard({
+  title,
+  value,
+}: {
+  title: string;
+  value: number | string;
+}) {
   return (
     <div className="rounded-2xl border border-[#2f2f2f] bg-[#151515] p-5">
       <p className="text-sm text-gray-400">{title}</p>

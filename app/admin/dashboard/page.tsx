@@ -8,16 +8,12 @@ import {
   Pie,
   Cell,
   Label,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid,
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import Footer from "@/components/layout/Footer";
+import IndonesiaMapChart from "@/components/shared/IndonesiaMapChart";
 
 const COLORS = ["#0779FF", "#4ade80", "#facc15", "#f87171"];
 
@@ -244,12 +240,8 @@ export default function AdminDashboardPage() {
     return lines.slice(0, 2); // clamp to 2 lines to avoid overflow
   };
 
-  const provinceData = [...stats.storesByProvince]
-    .map((item) => ({
-      ...item,
-      displayName: formatProvinceName(item.province),
-    }))
-    .sort((a, b) => b.total - a.total);
+  // Hapus provinceData karena tidak lagi digunakan untuk BarChart
+  // const provinceData = ...
 
   // Tambahkan fungsi handleLogout
   const handleLogout = async () => {
@@ -564,91 +556,19 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          {/* BAR CHART */}
+          {/* BAR CHART -> Diganti dengan Peta */}
           <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
             <h3 className="text-xl font-bold text-white mb-4">
               Penjual per Provinsi
             </h3>
-            <div className="h-80 pt-4">
-              <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-                <BarChart
-                  data={provinceData}
-                  margin={{ top: 10, right: 16, left: 4, bottom: 24 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="provinceBar"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="#0b8cff"
-                        stopOpacity={0.95}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="#0669dd"
-                        stopOpacity={0.95}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#3a3a3a"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="displayName"
-                    interval={0}
-                    tickMargin={10}
-                    tick={(props) => {
-                      const { x, y, payload } = props;
-                      const lines = wrapLabel(payload.value, 12);
-                      return (
-                        <g transform={`translate(${x},${y})`}>
-                          {lines.map((line: string, i: number) => (
-                            <text
-                              key={i}
-                              x={0}
-                              y={i * 13}
-                              textAnchor="middle"
-                              fill="#d1d5db"
-                              fontSize={11}
-                            >
-                              {line}
-                            </text>
-                          ))}
-                        </g>
-                      );
-                    }}
-                  />
-                  <YAxis
-                    stroke="#ccc"
-                    tick={{ fill: "#d1d5db", fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#111827",
-                      border: "1px solid #374151",
-                    }}
-                    labelStyle={{ color: "#e5e7eb" }}
-                    itemStyle={{ color: "#e5e7eb" }}
-                    formatter={(value: number, _name, entry) => [
-                      `${value} penjual`,
-                      entry.payload.displayName,
-                    ]}
-                  />
-                  <Bar
-                    dataKey="total"
-                    fill="url(#provinceBar)"
-                    radius={[6, 6, 0, 0]}
-                    barSize={36}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-96 pt-4">
+              <IndonesiaMapChart
+                data={stats.storesByProvince.map((s) => ({
+                  province: s.province,
+                  count: s.total,
+                }))}
+                label="Penjual"
+              />
             </div>
           </div>
         </div>
