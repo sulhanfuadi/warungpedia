@@ -290,20 +290,21 @@ export default function RegisterPage() {
                 Bangun toko Anda di Warungpedia
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
-              >
-                Ke Beranda
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
-              >
-                Login
-              </Link>
-            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
+            >
+              Ke Beranda
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
+            >
+              Login
+            </Link>
           </div>
         </div>
       </header>

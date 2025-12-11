@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Tambahkan import Link
 import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -109,23 +110,28 @@ export default function LoginPage() {
           <div className="flex items-center gap-3">
             <Logo size="md" variant="white" showText href="/" />
             <div className="hidden sm:flex flex-col leading-tight text-sm text-gray-300">
-              <span className="font-semibold text-white">Masuk ke Warungpedia</span>
-              <span className="text-xs text-gray-400">Akses dashboard admin & penjual</span>
+              <span className="font-semibold text-white">
+                Masuk ke Warungpedia
+              </span>
+              <span className="text-xs text-gray-400">
+                Akses dashboard admin & penjual
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a
+            {/* Menggunakan Link agar navigasi smooth tanpa reload */}
+            <Link
               href="/"
               className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
             >
               Ke Beranda
-            </a>
-            <a
+            </Link>
+            <Link
               href="/penjual/register"
               className="rounded-full border border-[#0779FF] bg-[#0779FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0669dd] hover:border-[#0669dd]"
             >
               Daftar Penjual
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -228,8 +234,15 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Update teks footer agar mengarah ke register */}
           <p className="mt-6 text-center text-sm text-gray-500">
-            Butuh akses seller? Hubungi admin untuk pendaftaran penjual.
+            Belum punya akun penjual?{" "}
+            <Link
+              href="/penjual/register"
+              className="font-medium text-[#0779FF] hover:text-[#0669dd] hover:underline"
+            >
+              Daftar di sini
+            </Link>
           </p>
         </div>
       </main>
