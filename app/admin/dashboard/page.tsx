@@ -55,6 +55,8 @@ export default function AdminDashboardPage() {
   const [downloadingStatusReport, setDownloadingStatusReport] = useState(false);
   const [downloadingProvinceReport, setDownloadingProvinceReport] =
     useState(false);
+  const [downloadingProductRatingReport, setDownloadingProductRatingReport] =
+    useState(false);
 
   const adminEmails = [
     process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
@@ -132,6 +134,13 @@ export default function AdminDashboardPage() {
       "/api/admin/reports/sellers/province",
       "Laporan-Toko-Provinsi",
       setDownloadingProvinceReport
+    );
+
+  const handleDownloadProductRatingReport = () =>
+    downloadReport(
+      "/api/admin/reports/products/rating",
+      "Laporan-Produk-Rating",
+      setDownloadingProductRatingReport
     );
 
   useEffect(() => {
@@ -375,32 +384,69 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* REPORT ACTIONS */}
-        <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4 mb-10">
-          <div>
-            <h3 className="text-xl font-bold text-white">Laporan Penjual</h3>
-            <p className="text-gray-400 text-sm">
-              Unduh laporan PDF akun aktif/tidak aktif serta rekap toko per
-              provinsi.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* Laporan Akun Penjual */}
+          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white">
+                Laporan Akun Penjual
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Daftar akun penjual aktif dan tidak aktif (SRS-MartPlace-09).
+              </p>
+            </div>
             <button
               onClick={handleDownloadStatusReport}
               disabled={downloadingStatusReport}
               className="rounded-lg bg-purple-600 hover:bg-purple-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {downloadingStatusReport
-                ? "Mengunduh laporan akun..."
-                : "Download Laporan Akun Penjual"}
+                ? "Mengunduh..."
+                : "Download Laporan Akun"}
             </button>
+          </div>
+
+          {/* Laporan Toko per Provinsi */}
+          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white">
+                Laporan Toko Provinsi
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Daftar penjual dikelompokkan berdasarkan provinsi
+                (SRS-MartPlace-10).
+              </p>
+            </div>
             <button
               onClick={handleDownloadProvinceReport}
               disabled={downloadingProvinceReport}
               className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {downloadingProvinceReport
-                ? "Mengunduh laporan provinsi..."
-                : "Download Laporan Toko per Provinsi"}
+                ? "Mengunduh..."
+                : "Download Laporan Provinsi"}
+            </button>
+          </div>
+
+          {/* Laporan Produk & Rating */}
+          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white">
+                Laporan Produk & Rating
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Daftar produk diurutkan berdasarkan rating tertinggi
+                (SRS-MartPlace-11).
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadProductRatingReport}
+              disabled={downloadingProductRatingReport}
+              className="rounded-lg bg-green-600 hover:bg-green-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {downloadingProductRatingReport
+                ? "Mengunduh..."
+                : "Download Laporan Produk"}
             </button>
           </div>
         </div>
