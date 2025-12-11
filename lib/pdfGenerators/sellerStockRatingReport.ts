@@ -7,13 +7,13 @@ const HEADER_BG = rgb(7 / 255, 121 / 255, 255 / 255);
 const HEADER_TEXT = rgb(1, 1, 1);
 const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
-// SRS-MartPlace-12: Kolom wajib No | Produk | Kategori | Harga | Stock | Rating
+// SRS-MartPlace-13: Kolom wajib No | Produk | Stok | Kategori | Harga | Rating
 const columns = [
   { key: "no", title: "No", width: 34 },
-  { key: "product", title: "Produk", width: 200 },
-  { key: "category", title: "Kategori", width: 120 },
+  { key: "product", title: "Produk", width: 170 },
+  { key: "stock", title: "Stok", width: 70 },
+  { key: "category", title: "Kategori", width: 110 },
   { key: "price", title: "Harga (Rp)", width: 120 },
-  { key: "stock", title: "Stock", width: 80 },
   { key: "rating", title: "Rating", width: 80 },
 ] as const;
 
@@ -22,9 +22,9 @@ type ColumnKey = (typeof columns)[number]["key"];
 const columnGetter: Record<ColumnKey, (record: SellerStockReportItem, index: number) => string> = {
   no: (_record, index) => (index + 1).toString(),
   product: (record) => record.name,
+  stock: (record) => record.stock.toString(),
   category: (record) => record.category,
   price: (record) => formatCurrency(record.price),
-  stock: (record) => record.stock.toString(),
   rating: (record) => record.rating.toFixed(2),
 };
 

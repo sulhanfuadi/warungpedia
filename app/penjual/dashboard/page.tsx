@@ -180,6 +180,54 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleDownloadStockRating = async () => {
+    if (!user?.id) {
+      setError("Session tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      if (!token) {
+        setError("Token tidak ditemukan. Silakan login ulang.");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/penjual/reports/stock-rating?sellerId=${encodeURIComponent(
+          user.id
+        )}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal download laporan rating");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan_Rating_${user.id}_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (authChecking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white">
@@ -214,12 +262,6 @@ export default function SellerDashboardPage() {
             >
               Upload Produk
             </Link>
-            <Link
-              href="/penjual/laporan-stok"
-              className="rounded-lg border border-[#3a3a3a] px-3 py-2 text-gray-200 hover:border-[#0779FF]"
-            >
-              Laporan Stok
-            </Link>
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -250,7 +292,7 @@ export default function SellerDashboardPage() {
             </div>
 
             {user?.id && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 {/* Laporan Stok Produk */}
                 <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
                   <div>
@@ -258,21 +300,18 @@ export default function SellerDashboardPage() {
                       Laporan Stok Produk
                     </h3>
                     <p className="text-gray-400 text-sm">
-                      Unduh laporan PDF stok produk berdasarkan urutan stok atau
-                      rating.
+                      Unduh laporan PDF stok produk berdasarkan urutan stok.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <button
-                      onClick={handleDownloadStokByStok}
-                      disabled={isDownloading}
-                      className="rounded-lg bg-green-600 hover:bg-green-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isDownloading
-                        ? "Mengunduh laporan..."
-                        : "Download Laporan Stok (Urut Stok)"}
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleDownloadStokByStok}
+                    disabled={isDownloading}
+                    className="rounded-lg bg-green-600 hover:bg-green-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDownloading
+                      ? "Mengunduh laporan..."
+                      : "Download Laporan Stok"}
+                  </button>
                 </div>
 
                 {/* Laporan Stok Menipis */}
@@ -282,8 +321,7 @@ export default function SellerDashboardPage() {
                       Laporan Stok Menipis
                     </h3>
                     <p className="text-gray-400 text-sm">
-                      Daftar produk yang harus segera dipesan (stok kurang dari
-                      2).
+                      Daftar produk yang harus segera dipesan (stok &lt; 2).
                     </p>
                   </div>
                   <button
@@ -293,7 +331,28 @@ export default function SellerDashboardPage() {
                   >
                     {isDownloading
                       ? "Mengunduh laporan..."
-                      : "Download Laporan Stok Menipis"}
+                      : "Download Stok Menipis"}
+                  </button>
+                </div>
+
+                {/* Laporan Rating Produk (SRS-MartPlace-13) */}
+                <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      Laporan Rating Produk
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Daftar produk diurutkan berdasarkan rating (menurun).
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleDownloadStockRating}
+                    disabled={isDownloading}
+                    className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDownloading
+                      ? "Mengunduh laporan..."
+                      : "Download Rating"}
                   </button>
                 </div>
               </div>
