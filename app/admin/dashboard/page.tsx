@@ -62,21 +62,38 @@ export default function AdminDashboardPage() {
     return undefined;
   };
 
-  const downloadReport = (
+  const downloadReport = async (
     endpoint: string,
-    _filenamePrefix: string,
+    filenamePrefix: string,
     setLoading: (state: boolean) => void,
   ) => {
     setLoading(true);
     try {
-      const newWindow = window.open(endpoint, "_blank", "noopener,noreferrer");
-      if (!newWindow) {
-        throw new Error("Browser memblokir pop-up. Izinkan pop-up download dan coba lagi.");
+      // Fetch PDF as blob
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filenamePrefix}-${new Date().toISOString().split("T")[0]}.pdf`;
+      
+      // Trigger download without popup
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Gagal membuka laporan", error);
+      console.error("Gagal mengunduh laporan", error);
       alert(
-        `Gagal membuka laporan: ${
+        `Gagal mengunduh laporan: ${
           error instanceof Error ? error.message : "Terjadi kesalahan"
         }`,
       );
