@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createProductFeedback,
   listProductFeedbacks,
+  DuplicateFeedbackError,
 } from "@/lib/controllers/productFeedbackController";
 import { validateProductFeedback } from "@/lib/utils/productFeedbackValidator";
 import { sendThankYouEmail } from "@/lib/services/emailService";
@@ -63,8 +64,17 @@ export async function POST(
 
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof DuplicateFeedbackError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status ?? 409 },
+      );
+    }
     return NextResponse.json(
-      { error: "Gagal menyimpan feedback", details: String(error) },
+      {
+        error: "Gagal menyimpan feedback",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }
