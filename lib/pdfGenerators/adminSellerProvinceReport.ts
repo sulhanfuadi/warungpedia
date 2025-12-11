@@ -4,15 +4,9 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 interface SellerRow {
   id: string;
   store_name: string | null;
-  pic_email: string | null;
-  pic_city: string | null;
+  pic_name: string | null;
   pic_province: string | null;
   status: string | null;
-}
-
-interface ProvinceGroup {
-  province: string;
-  sellers: SellerRow[];
 }
 
 const PAGE_SIZE: [number, number] = [842, 595];
@@ -23,10 +17,9 @@ const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
 const columns = [
   { key: "no", title: "No.", width: 40 },
-  { key: "store", title: "Nama Toko", width: 200 },
-  { key: "email", title: "Email Penjual", width: 190 },
-  { key: "city", title: "Kota/Kab", width: 160 },
-  { key: "status", title: "Status", width: 120 },
+  { key: "store", title: "Nama Toko", width: 230 },
+  { key: "pic_name", title: "Nama PIC", width: 180 },
+  { key: "province", title: "Provinsi", width: 260 },
 ] as const;
 
 type ColumnKey = (typeof columns)[number]["key"];
@@ -34,34 +27,9 @@ type ColumnKey = (typeof columns)[number]["key"];
 const columnGetter: Record<ColumnKey, (seller: SellerRow, index: number) => string> = {
   no: (_seller, index) => (index + 1).toString(),
   store: (seller) => seller.store_name ?? "-",
-  email: (seller) => seller.pic_email ?? "-",
-  city: (seller) => seller.pic_city ?? seller.pic_province ?? "-",
-  status: (seller) => (seller.status === "ACTIVE" ? "Aktif" : "Tidak Aktif"),
+  pic_name: (seller) => seller.pic_name ?? "-",
+  province: (seller) => seller.pic_province ?? "-",
 };
-
-function groupByProvince(rows: SellerRow[]): ProvinceGroup[] {
-  const buckets = new Map<string, SellerRow[]>();
-
-  rows.forEach((row) => {
-    const province = (row.pic_province || "Tidak diketahui").trim() || "Tidak diketahui";
-    const key = province.toUpperCase();
-    if (!buckets.has(key)) {
-      buckets.set(key, []);
-    }
-    buckets.get(key)!.push(row);
-  });
-
-  return Array.from(buckets.entries())
-    .sort((a, b) => a[0].localeCompare(b[0], "id", { sensitivity: "base" }))
-    .map(([province, sellers]) => {
-      sellers.sort((left, right) => {
-        const leftName = (left.store_name || "").toLowerCase();
-        const rightName = (right.store_name || "").toLowerCase();
-        return leftName.localeCompare(rightName, "id", { sensitivity: "base" });
-      });
-      return { province, sellers };
-    });
-}
 
 function drawTableHeader(options: {
   page: import("pdf-lib").PDFPage;
@@ -116,12 +84,7 @@ function drawRow(options: {
 
     const rawText = columnGetter[column.key](seller, index);
     const truncated = rawText.length > 38 ? `${rawText.slice(0, 35)}...` : rawText;
-    const textColor =
-      column.key === "status"
-        ? rawText === "Aktif"
-          ? rgb(0.05, 0.45, 0.2)
-          : rgb(0.7, 0.2, 0.2)
-        : rgb(0.15, 0.15, 0.15);
+    const textColor = rgb(0.15, 0.15, 0.15);
 
     page.drawText(truncated, {
       x: currentX + 6,
@@ -161,15 +124,35 @@ function drawFooter(options: {
 export async function generateSellerProvinceReport(): Promise<Uint8Array> {
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("id, store_name, pic_email, pic_city, pic_province, status")
-    .order("pic_province", { ascending: true });
+    .select("id, store_name, pic_name, pic_province, status");
 
   if (error) {
     throw new Error(`Gagal mengambil data penjual: ${error.message}`);
   }
 
-  const sellers = data ?? [];
-  const groups = groupByProvince(sellers);
+  let sellers = data ?? [];
+  
+  // Sort by province (A-Z), then by store name within each province
+  sellers.sort((a, b) => {
+    const provinceA = (a.pic_province || "Tidak diketahui").trim();
+    const provinceB = (b.pic_province || "Tidak diketahui").trim();
+    const provinceCompare = provinceA.localeCompare(provinceB, "id", { sensitivity: "base" });
+    
+    if (provinceCompare !== 0) return provinceCompare;
+    
+    // If same province, sort by store name
+    const storeA = (a.store_name || "").toLowerCase();
+    const storeB = (b.store_name || "").toLowerCase();
+    return storeA.localeCompare(storeB, "id", { sensitivity: "base" });
+  });
+
+  // Get current user info for "Diproses oleh"
+  const processedDate = new Date().toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const processedByName = "Admin System"; // Will be replaced with actual user if available
 
   const pdfDoc = await PDFDocument.create();
   const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -191,17 +174,19 @@ export async function generateSellerProvinceReport(): Promise<Uint8Array> {
     ({ width, height } = page.getSize());
     cursorY = height - 50;
 
-    const title = withContinuationHeader
-      ? "Laporan Daftar Toko per Provinsi (lanjutan)"
-      : "Laporan Daftar Toko per Provinsi";
-    page.drawText(title, {
-      x: MARGIN_X,
-      y: cursorY,
-      size: 14,
-      font: headerFont,
-      color: rgb(0.15, 0.15, 0.15),
-    });
-    cursorY -= 30;
+    if (withContinuationHeader) {
+      page.drawText("Laporan Daftar Toko Berdasarkan Lokasi Provinsi (lanjutan)", {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 14,
+        font: headerFont,
+        color: rgb(0.15, 0.15, 0.15),
+      });
+      cursorY -= 30;
+      
+      drawTableHeader({ page, headerFont, startY: cursorY });
+      cursorY -= 24;
+    }
   };
 
   page.drawText("Warungpedia Admin Platform", {
@@ -213,16 +198,26 @@ export async function generateSellerProvinceReport(): Promise<Uint8Array> {
   });
   cursorY -= 18;
 
-  page.drawText("Laporan Daftar Toko per Provinsi", {
+  page.drawText("Laporan Daftar Toko Berdasarkan Lokasi Provinsi", {
     x: MARGIN_X,
     y: cursorY,
     size: 16,
     font: headerFont,
     color: rgb(0.15, 0.15, 0.15),
   });
-  cursorY -= 30;
+  cursorY -= 28;
 
-  page.drawText(`Total Provinsi: ${groups.length} | Total Toko: ${sellers.length}`, {
+  // Header info: Tanggal dibuat and processed by
+  page.drawText(`Tanggal dibuat: ${processedDate}`, {
+    x: MARGIN_X,
+    y: cursorY,
+    size: 10,
+    font: bodyFont,
+    color: rgb(0.25, 0.25, 0.25),
+  });
+  cursorY -= 18;
+
+  page.drawText(`oleh ${processedByName}`, {
     x: MARGIN_X,
     y: cursorY,
     size: 10,
@@ -231,28 +226,15 @@ export async function generateSellerProvinceReport(): Promise<Uint8Array> {
   });
   cursorY -= 24;
 
-  groups.forEach((group) => {
-    ensureSpace(80, true);
+  // Draw single table header
+  drawTableHeader({ page, headerFont, startY: cursorY });
+  cursorY -= 24;
 
-    page.drawText(`${group.province} (${group.sellers.length} Toko)`, {
-      x: MARGIN_X,
-      y: cursorY,
-      size: 13,
-      font: headerFont,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    cursorY -= 20;
-
-    drawTableHeader({ page, headerFont, startY: cursorY });
-    cursorY -= 28;
-
-    group.sellers.forEach((seller, sellerIndex) => {
-      ensureSpace(30, true);
-      drawRow({ page, font: bodyFont, seller, index: sellerIndex, startY: cursorY });
-      cursorY -= 24;
-    });
-
-    cursorY -= 16;
+  // Draw all rows in single table, sorted by province
+  sellers.forEach((seller, index) => {
+    ensureSpace(30, true);
+    drawRow({ page, font: bodyFont, seller, index, startY: cursorY });
+    cursorY -= 24;
   });
 
   drawFooter({ page, font: bodyFont, width, pageNumber });
