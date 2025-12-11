@@ -22,7 +22,22 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(product);
+    const { data: ratingAgg, error: ratingError } = await supabaseAdmin
+      .from("product_feedbacks")
+      .select("rating")
+      .eq("product_id", productId);
+
+    let rating_avg: number | null = null;
+    let rating_count = 0;
+    if (!ratingError && ratingAgg) {
+      rating_count = ratingAgg.length;
+      if (rating_count > 0) {
+        const sum = ratingAgg.reduce((acc, r) => acc + (r.rating || 0), 0);
+        rating_avg = Math.round((sum / rating_count) * 10) / 10;
+      }
+    }
+
+    return NextResponse.json({ ...product, rating_avg, rating_count });
   } catch (err) {
     return NextResponse.json(
       { error: "Terjadi kesalahan server", details: String(err) },

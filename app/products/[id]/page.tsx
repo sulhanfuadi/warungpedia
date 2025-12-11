@@ -20,6 +20,8 @@ type Product = {
   main_photo_path: string;
   gallery_photos?: string[];
   product_variants?: Variant[];
+  rating_avg?: number | null;
+  rating_count?: number | null;
   seller?: {
     store_name?: string;
     pic_city?: string;
@@ -142,7 +144,12 @@ export default function ProductDetailPage() {
       : "Lokasi tidak tersedia";
   }, [product]);
   const sellerName = product?.seller?.store_name || "Nama Toko";
-  const ratingText = "4.8 (156 ulasan)";
+  const ratingValue = product?.rating_avg ?? null;
+  const ratingCount = product?.rating_count ?? 0;
+  const ratingText =
+    ratingCount > 0 && ratingValue !== null
+      ? `${ratingValue.toFixed(1)} (${ratingCount} ulasan)`
+      : "Belum ada ulasan";
   const primaryImage = gallery[0] || product?.main_photo_path || "";
 
   if (!id) {
