@@ -433,6 +433,7 @@ export default function HomePage() {
                 placeholder="Cari nama produk..."
                 value={qProduct}
                 onChange={(e) => setQProduct(e.target.value)}
+                suppressHydrationWarning
               />
             </div>
             <button
@@ -442,6 +443,7 @@ export default function HomePage() {
                   ? "border-[#0779FF] bg-[#0779FF]/10 text-[#0779FF]"
                   : "border-[#2f2f2f] text-gray-300 hover:border-[#0779FF] hover:text-white"
               }`}
+              suppressHydrationWarning
             >
               <span>Pencarian Detail</span>
               <span
