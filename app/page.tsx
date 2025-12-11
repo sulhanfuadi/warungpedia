@@ -374,7 +374,7 @@ export default function HomePage() {
                   href="/login"
                   className="rounded-full border border-[#2f2f2f] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-100 transition hover:border-[#0779FF] hover:text-white"
                 >
-                  Masuk
+                  Login
                 </Link>
                 <Link
                   href="/penjual/register"
