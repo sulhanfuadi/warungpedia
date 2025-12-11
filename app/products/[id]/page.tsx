@@ -6,6 +6,7 @@ import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { useParams } from "next/navigation";
 import ProductFeedbackSection from "@/components/products/ProductFeedbackSection";
+import Footer from "@/components/layout/Footer";
 
 type Product = {
   id: string;
@@ -52,7 +53,11 @@ export default function ProductDetailPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Gagal memuat produk");
         const seller = data.sellers?.[0] || data.sellers || data.seller;
-        setProduct({ ...data, seller, product_variants: data.product_variants || [] });
+        setProduct({
+          ...data,
+          seller,
+          product_variants: data.product_variants || [],
+        });
 
         const defaults: Record<string, string> = {};
         (data.product_variants || []).forEach((v: Variant) => {
@@ -75,11 +80,15 @@ export default function ProductDetailPage() {
       typeof src === "string" && src.trim().length > 0;
     const thumbs = (product.gallery_photos || []).filter(isValid);
     const variantImages =
-      product.product_variants
-        ?.map((v) => v.image_path)
-        .filter(isValid) || [];
-    const merged = [product.main_photo_path, ...thumbs, ...variantImages] as string[];
-    const unique = merged.filter((src, idx) => isValid(src) && merged.indexOf(src) === idx);
+      product.product_variants?.map((v) => v.image_path).filter(isValid) || [];
+    const merged = [
+      product.main_photo_path,
+      ...thumbs,
+      ...variantImages,
+    ] as string[];
+    const unique = merged.filter(
+      (src, idx) => isValid(src) && merged.indexOf(src) === idx
+    );
     return unique.slice(0, 3); // tampilkan maksimal 3 gambar (main + 2 lainnya)
   }, [product]);
 
@@ -96,7 +105,7 @@ export default function ProductDetailPage() {
     if (!product) return null;
     for (const group in selected) {
       const found = (product.product_variants || []).find(
-        (v) => v.option_group === group && v.name === selected[group],
+        (v) => v.option_group === group && v.name === selected[group]
       );
       if (found?.image_path) return found.image_path;
     }
@@ -107,7 +116,7 @@ export default function ProductDetailPage() {
     if (!product) return 0;
     for (const group in selected) {
       const found = (product.product_variants || []).find(
-        (v) => v.option_group === group && v.name === selected[group] && v.price,
+        (v) => v.option_group === group && v.name === selected[group] && v.price
       );
       if (found?.price) return found.price;
     }
@@ -118,7 +127,7 @@ export default function ProductDetailPage() {
     if (!product) return 0;
     for (const group in selected) {
       const found = (product.product_variants || []).find(
-        (v) => v.option_group === group && v.name === selected[group],
+        (v) => v.option_group === group && v.name === selected[group]
       );
       if (found) return found.stock;
     }
@@ -128,7 +137,9 @@ export default function ProductDetailPage() {
   const locationText = useMemo(() => {
     const city = product?.seller?.pic_city;
     const prov = product?.seller?.pic_province;
-    return city || prov ? [city, prov].filter(Boolean).join(", ") : "Lokasi tidak tersedia";
+    return city || prov
+      ? [city, prov].filter(Boolean).join(", ")
+      : "Lokasi tidak tersedia";
   }, [product]);
   const sellerName = product?.seller?.store_name || "Nama Toko";
   const ratingText = "4.8 (156 ulasan)";
@@ -164,7 +175,9 @@ export default function ProductDetailPage() {
 
   const displayImage =
     (selectedImage && gallery.includes(selectedImage) && selectedImage) ||
-    (activeVariantImage && gallery.includes(activeVariantImage) && activeVariantImage) ||
+    (activeVariantImage &&
+      gallery.includes(activeVariantImage) &&
+      activeVariantImage) ||
     primaryImage;
 
   return (
@@ -203,7 +216,9 @@ export default function ProductDetailPage() {
                       key={idx}
                       onClick={() => setSelectedImage(src)}
                       className={`overflow-hidden rounded-lg border ${
-                        displayImage === src ? "border-[#0779FF]" : "border-[#2f2f2f]"
+                        displayImage === src
+                          ? "border-[#0779FF]"
+                          : "border-[#2f2f2f]"
                       } bg-[#111] shadow-sm`}
                     >
                       <Image
@@ -221,7 +236,9 @@ export default function ProductDetailPage() {
 
             <div className="space-y-4">
               <div>
-                <h1 className="text-2xl font-semibold text-white">{product.name}</h1>
+                <h1 className="text-2xl font-semibold text-white">
+                  {product.name}
+                </h1>
                 <p className="mt-2 text-3xl font-bold text-[#0779FF]">
                   Rp{activePrice.toLocaleString("id-ID")}
                 </p>
@@ -296,12 +313,16 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm text-gray-400">Kategori</span>
-                  <span className="text-sm font-semibold text-[#0779FF]">{product.category}</span>
+                  <span className="text-sm font-semibold text-[#0779FF]">
+                    {product.category}
+                  </span>
                 </div>
               </div>
 
               <div className="rounded-xl border border-[#2f2f2f] bg-[#1f1f1f] p-4 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-white">Deskripsi</h3>
+                <h3 className="mb-3 text-sm font-semibold text-white">
+                  Deskripsi
+                </h3>
                 <p className="text-sm leading-6 text-gray-300">
                   {product.description || "Belum ada deskripsi."}
                 </p>
@@ -310,7 +331,9 @@ export default function ProductDetailPage() {
                     {Object.entries(product.specifications).map(([k, v]) => (
                       <div key={k} className="flex justify-between">
                         <span className="text-gray-500">{k}</span>
-                        <span className="font-medium text-white">{String(v)}</span>
+                        <span className="font-medium text-white">
+                          {String(v)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -334,9 +357,12 @@ export default function ProductDetailPage() {
                 />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white">{product.name}</p>
+                <p className="text-sm font-semibold text-white">
+                  {product.name}
+                </p>
                 <p className="text-xs text-gray-400">
-                  {Object.values(selected).filter(Boolean).join(", ") || "Pilih varian"}
+                  {Object.values(selected).filter(Boolean).join(", ") ||
+                    "Pilih varian"}
                 </p>
               </div>
             </div>
@@ -351,7 +377,9 @@ export default function ProductDetailPage() {
                 >
                   -
                 </button>
-                <span className="px-3 text-sm font-semibold text-white">{qty}</span>
+                <span className="px-3 text-sm font-semibold text-white">
+                  {qty}
+                </span>
                 <button
                   onClick={() => setQty((q) => q + 1)}
                   className="px-3 py-2 text-white hover:text-[#0779FF]"
@@ -375,6 +403,9 @@ export default function ProductDetailPage() {
       <section className="mx-auto mt-6 max-w-6xl px-6 pb-10">
         <ProductFeedbackSection productId={id} />
       </section>
+
+      {/* Footer */}
+      <Footer variant="full" className="mt-8" />
     </div>
   );
 }

@@ -4,11 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import {
-  PieChart, Pie, Cell, Label,
-  BarChart, Bar, XAxis, YAxis,
-  Tooltip, ResponsiveContainer, CartesianGrid
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
+import Footer from "@/components/layout/Footer";
 
 const COLORS = ["#0779FF", "#4ade80", "#facc15", "#f87171"];
 
@@ -43,8 +52,10 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [downloadingStatusReport, setDownloadingStatusReport] = useState(false);
-  const [downloadingProvinceReport, setDownloadingProvinceReport] = useState(false);
-  const [downloadingProductReport, setDownloadingProductReport] = useState(false);
+  const [downloadingProvinceReport, setDownloadingProvinceReport] =
+    useState(false);
+  const [downloadingProductReport, setDownloadingProductReport] =
+    useState(false);
 
   const adminEmails = [
     process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
@@ -52,7 +63,13 @@ export default function AdminDashboardPage() {
 
   const inferRole = (session: unknown): string | undefined => {
     if (!session || typeof session !== "object") return undefined;
-    const s = session as { user?: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown>; email?: string } };
+    const s = session as {
+      user?: {
+        user_metadata?: Record<string, unknown>;
+        app_metadata?: Record<string, unknown>;
+        email?: string;
+      };
+    };
     const metaRole =
       (s.user?.user_metadata?.role as string | undefined) ||
       (s.user?.app_metadata?.role as string | undefined);
@@ -65,7 +82,7 @@ export default function AdminDashboardPage() {
   const downloadReport = async (
     endpoint: string,
     filenamePrefix: string,
-    setLoading: (state: boolean) => void,
+    setLoading: (state: boolean) => void
   ) => {
     setLoading(true);
     try {
@@ -74,20 +91,22 @@ export default function AdminDashboardPage() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const blob = await response.blob();
-      
+
       // Create download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${filenamePrefix}-${new Date().toISOString().split("T")[0]}.pdf`;
-      
+      link.download = `${filenamePrefix}-${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
+
       // Trigger download without popup
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Cleanup
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -95,7 +114,7 @@ export default function AdminDashboardPage() {
       alert(
         `Gagal mengunduh laporan: ${
           error instanceof Error ? error.message : "Terjadi kesalahan"
-        }`,
+        }`
       );
     } finally {
       setTimeout(() => setLoading(false), 300);
@@ -106,21 +125,21 @@ export default function AdminDashboardPage() {
     downloadReport(
       "/api/admin/reports/sellers/status",
       "Laporan-Akun-Penjual",
-      setDownloadingStatusReport,
+      setDownloadingStatusReport
     );
 
   const handleDownloadProvinceReport = () =>
     downloadReport(
       "/api/admin/reports/sellers/province",
       "Laporan-Toko-Provinsi",
-      setDownloadingProvinceReport,
+      setDownloadingProvinceReport
     );
 
   const handleDownloadProductReport = () =>
     downloadReport(
       "/api/admin/reports/products/rating",
       "Laporan-Produk-Rating",
-      setDownloadingProductReport,
+      setDownloadingProductReport
     );
 
   useEffect(() => {
@@ -137,14 +156,16 @@ export default function AdminDashboardPage() {
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      const role =
-        (session?.user.user_metadata as Record<string, unknown>)?.role ||
-        (session?.user.app_metadata as Record<string, unknown>)?.role;
-      if (event === "SIGNED_OUT" || !session || role !== "admin") {
-        router.replace("/login");
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const role =
+          (session?.user.user_metadata as Record<string, unknown>)?.role ||
+          (session?.user.app_metadata as Record<string, unknown>)?.role;
+        if (event === "SIGNED_OUT" || !session || role !== "admin") {
+          router.replace("/login");
+        }
       }
-    });
+    );
 
     return () => {
       active = false;
@@ -159,11 +180,19 @@ export default function AdminDashboardPage() {
         users: data.users ?? 0,
         productCategories: data.productCategories ?? [],
         storesByProvince: data.storesByProvince ?? [],
-        sellerStatusCounts: data.sellerStatusCounts ?? { ACTIVE: 0, INACTIVE: 0, PENDING: 0, REJECTED: 0 },
-        feedbackStats: data.feedbackStats ?? { totalFeedbacks: 0, uniqueReviewers: 0 },
+        sellerStatusCounts: data.sellerStatusCounts ?? {
+          ACTIVE: 0,
+          INACTIVE: 0,
+          PENDING: 0,
+          REJECTED: 0,
+        },
+        feedbackStats: data.feedbackStats ?? {
+          totalFeedbacks: 0,
+          uniqueReviewers: 0,
+        },
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (authChecking || !stats) {
@@ -177,11 +206,16 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const totalCategoryProducts = stats.productCategories.reduce((sum, item) => sum + item.total, 0);
+  const totalCategoryProducts = stats.productCategories.reduce(
+    (sum, item) => sum + item.total,
+    0
+  );
   const categoryLegend = stats.productCategories.map((item, index) => ({
     ...item,
     color: COLORS[index % COLORS.length],
-    percentage: totalCategoryProducts ? Math.round((item.total / totalCategoryProducts) * 100) : 0,
+    percentage: totalCategoryProducts
+      ? Math.round((item.total / totalCategoryProducts) * 100)
+      : 0,
   }));
 
   const formatProvinceName = (province: string) =>
@@ -201,7 +235,8 @@ export default function AdminDashboardPage() {
         current = candidate;
       } else {
         if (current) lines.push(current);
-        current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}…` : word;
+        current =
+          word.length > maxChars ? `${word.slice(0, maxChars - 1)}…` : word;
       }
     }
     if (current) lines.push(current);
@@ -209,12 +244,14 @@ export default function AdminDashboardPage() {
   };
 
   const provinceData = [...stats.storesByProvince]
-    .map((item) => ({ ...item, displayName: formatProvinceName(item.province) }))
+    .map((item) => ({
+      ...item,
+      displayName: formatProvinceName(item.province),
+    }))
     .sort((a, b) => b.total - a.total);
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
-
       {/* HEADER */}
       <header className="bg-[#2a2a2a] text-white p-6 shadow-2xl border-b border-[#3a3a3a]">
         <div className="container mx-auto flex items-center justify-between gap-4">
@@ -265,7 +302,9 @@ export default function AdminDashboardPage() {
       {/* CONTENT */}
       <div className="flex-grow container mx-auto p-8">
         <h2 className="text-3xl font-bold text-white mb-2">Dashboard</h2>
-        <p className="text-gray-400 mb-8">Ringkasan aktivitas penjual & produk</p>
+        <p className="text-gray-400 mb-8">
+          Ringkasan aktivitas penjual & produk
+        </p>
 
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
@@ -276,12 +315,16 @@ export default function AdminDashboardPage() {
 
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
             <p className="text-gray-400 text-sm">Kategori Produk</p>
-            <h3 className="text-3xl font-bold text-white">{stats.productCategories.length}</h3>
+            <h3 className="text-3xl font-bold text-white">
+              {stats.productCategories.length}
+            </h3>
           </div>
 
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
             <p className="text-gray-400 text-sm">Wilayah Penjual</p>
-            <h3 className="text-3xl font-bold text-white">{stats.storesByProvince.length}</h3>
+            <h3 className="text-3xl font-bold text-white">
+              {stats.storesByProvince.length}
+            </h3>
           </div>
 
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl">
@@ -302,7 +345,8 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2 w-2 rounded-full bg-[#f97316]" />
                 Pending/Reject:{" "}
-                {(stats.sellerStatusCounts?.PENDING ?? 0) + (stats.sellerStatusCounts?.REJECTED ?? 0)}
+                {(stats.sellerStatusCounts?.PENDING ?? 0) +
+                  (stats.sellerStatusCounts?.REJECTED ?? 0)}
               </div>
             </div>
           </div>
@@ -337,7 +381,8 @@ export default function AdminDashboardPage() {
             <div>
               <h3 className="text-xl font-bold text-white">Laporan Penjual</h3>
               <p className="text-gray-400 text-sm">
-                Unduh laporan PDF akun aktif/tidak aktif serta rekap toko per provinsi.
+                Unduh laporan PDF akun aktif/tidak aktif serta rekap toko per
+                provinsi.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -346,23 +391,30 @@ export default function AdminDashboardPage() {
                 disabled={downloadingStatusReport}
                 className="rounded-lg bg-purple-600 hover:bg-purple-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {downloadingStatusReport ? "Mengunduh laporan akun..." : "Download Laporan Akun Penjual"}
+                {downloadingStatusReport
+                  ? "Mengunduh laporan akun..."
+                  : "Download Laporan Akun Penjual"}
               </button>
               <button
                 onClick={handleDownloadProvinceReport}
                 disabled={downloadingProvinceReport}
                 className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {downloadingProvinceReport ? "Mengunduh laporan provinsi..." : "Download Laporan Toko per Provinsi"}
+                {downloadingProvinceReport
+                  ? "Mengunduh laporan provinsi..."
+                  : "Download Laporan Toko per Provinsi"}
               </button>
             </div>
           </div>
 
           <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3a3a3a] shadow-2xl flex flex-col gap-4">
             <div>
-              <h3 className="text-xl font-bold text-white">Laporan Produk Platform</h3>
+              <h3 className="text-xl font-bold text-white">
+                Laporan Produk Platform
+              </h3>
               <p className="text-gray-400 text-sm">
-                Daftar produk lengkap dengan rating, toko, kategori, harga, dan provinsi.
+                Daftar produk lengkap dengan rating, toko, kategori, harga, dan
+                provinsi.
               </p>
             </div>
             <button
@@ -370,17 +422,20 @@ export default function AdminDashboardPage() {
               disabled={downloadingProductReport}
               className="rounded-lg bg-green-600 hover:bg-green-700 px-5 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {downloadingProductReport ? "Mengunduh laporan produk..." : "Download Laporan Produk"}
+              {downloadingProductReport
+                ? "Mengunduh laporan produk..."
+                : "Download Laporan Produk"}
             </button>
           </div>
         </div>
 
         {/* CHART GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-
           {/* PIE CHART */}
           <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-4">Distribusi Kategori Produk</h3>
+            <h3 className="text-xl font-bold text-white mb-4">
+              Distribusi Kategori Produk
+            </h3>
             <div className="h-80 pt-4">
               {categoryLegend.length ? (
                 <ResponsiveContainer width="100%" height="100%" minHeight={320}>
@@ -395,22 +450,44 @@ export default function AdminDashboardPage() {
                       strokeWidth={0}
                     >
                       {categoryLegend.map((item, index) => (
-                        <Cell key={`${item.category || "kategori"}-${index}`} fill={item.color} />
+                        <Cell
+                          key={`${item.category || "kategori"}-${index}`}
+                          fill={item.color}
+                        />
                       ))}
                       <Label
                         position="center"
                         content={({ viewBox }) => {
-                          const vb = viewBox as { cx?: number; cy?: number } | undefined;
-                          if (!vb || typeof vb.cx !== "number" || typeof vb.cy !== "number") {
+                          const vb = viewBox as
+                            | { cx?: number; cy?: number }
+                            | undefined;
+                          if (
+                            !vb ||
+                            typeof vb.cx !== "number" ||
+                            typeof vb.cy !== "number"
+                          ) {
                             return null;
                           }
                           const { cx, cy } = vb;
                           return (
                             <g>
-                              <text x={cx} y={cy - 8} textAnchor="middle" fill="#a3a3a3" fontSize={12}>
+                              <text
+                                x={cx}
+                                y={cy - 8}
+                                textAnchor="middle"
+                                fill="#a3a3a3"
+                                fontSize={12}
+                              >
                                 Total Produk
                               </text>
-                              <text x={cx} y={cy + 18} textAnchor="middle" fill="#ffffff" fontSize={24} fontWeight={700}>
+                              <text
+                                x={cx}
+                                y={cy + 18}
+                                textAnchor="middle"
+                                fill="#ffffff"
+                                fontSize={24}
+                                fontWeight={700}
+                              >
                                 {totalCategoryProducts}
                               </text>
                             </g>
@@ -419,7 +496,10 @@ export default function AdminDashboardPage() {
                       />
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: "#1f1f1f", border: "1px solid #333" }}
+                      contentStyle={{
+                        background: "#1f1f1f",
+                        border: "1px solid #333",
+                      }}
                       labelStyle={{ color: "#f5f5f5" }}
                       itemStyle={{ color: "#e0e0e0" }}
                     />
@@ -440,14 +520,21 @@ export default function AdminDashboardPage() {
                     className="flex items-center justify-between rounded-xl border border-[#3a3a3a] bg-[#1a1a1a] px-4 py-3 shadow-inner"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ background: item.color }}></span>
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ background: item.color }}
+                      ></span>
                       <p className="text-white text-sm font-medium truncate max-w-[120px]">
                         {item.category || "Tanpa Kategori"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white text-sm font-semibold">{item.percentage}%</p>
-                      <p className="text-xs text-gray-400">{item.total} produk</p>
+                      <p className="text-white text-sm font-semibold">
+                        {item.percentage}%
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {item.total} produk
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -457,17 +544,40 @@ export default function AdminDashboardPage() {
 
           {/* BAR CHART */}
           <div className="bg-gradient-to-b from-[#2f2f2f] to-[#1d1d1d] p-6 rounded-2xl border border-[#3a3a3a] shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-4">Penjual per Provinsi</h3>
+            <h3 className="text-xl font-bold text-white mb-4">
+              Penjual per Provinsi
+            </h3>
             <div className="h-80 pt-4">
               <ResponsiveContainer width="100%" height="100%" minHeight={320}>
-                <BarChart data={provinceData} margin={{ top: 10, right: 16, left: 4, bottom: 24 }}>
+                <BarChart
+                  data={provinceData}
+                  margin={{ top: 10, right: 16, left: 4, bottom: 24 }}
+                >
                   <defs>
-                    <linearGradient id="provinceBar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0b8cff" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="#0669dd" stopOpacity={0.95} />
+                    <linearGradient
+                      id="provinceBar"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#0b8cff"
+                        stopOpacity={0.95}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="#0669dd"
+                        stopOpacity={0.95}
+                      />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#3a3a3a"
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey="displayName"
                     interval={0}
@@ -493,29 +603,37 @@ export default function AdminDashboardPage() {
                       );
                     }}
                   />
-                  <YAxis stroke="#ccc" tick={{ fill: "#d1d5db", fontSize: 12 }} />
+                  <YAxis
+                    stroke="#ccc"
+                    tick={{ fill: "#d1d5db", fontSize: 12 }}
+                  />
                   <Tooltip
-                    contentStyle={{ background: "#111827", border: "1px solid #374151" }}
+                    contentStyle={{
+                      background: "#111827",
+                      border: "1px solid #374151",
+                    }}
                     labelStyle={{ color: "#e5e7eb" }}
                     itemStyle={{ color: "#e5e7eb" }}
-                    formatter={(value: number, _name, entry) => [`${value} penjual`, entry.payload.displayName]}
+                    formatter={(value: number, _name, entry) => [
+                      `${value} penjual`,
+                      entry.payload.displayName,
+                    ]}
                   />
-                  <Bar dataKey="total" fill="url(#provinceBar)" radius={[6, 6, 0, 0]} barSize={36} />
+                  <Bar
+                    dataKey="total"
+                    fill="url(#provinceBar)"
+                    radius={[6, 6, 0, 0]}
+                    barSize={36}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* FOOTER */}
-      <footer className="bg-[#1a1a1a] border-t border-[#3a3a3a] py-6 px-4 mt-auto">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <Logo size="sm" variant="white" showText={true} href="/" />
-          <p>© 2025 Warungpedia. All rights reserved.</p>
-        </div>
-      </footer>
+      {/* Footer */}
+      <Footer variant="compact" />
     </div>
   );
 }

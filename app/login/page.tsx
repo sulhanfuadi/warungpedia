@@ -11,6 +11,7 @@ import {
   type Role,
   type UserLike,
 } from "@/lib/auth/roles";
+import Footer from "@/components/layout/Footer";
 
 const redirectByRole = (
   role: Role | undefined,
@@ -246,6 +247,9 @@ export default function LoginPage() {
           </p>
         </div>
       </main>
+
+      {/* Footer */}
+      <Footer variant="minimal" />
     </div>
   );
 }

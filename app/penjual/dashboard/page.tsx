@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import SellerDashboardCharts from "@/components/penjual/SellerDashboardCharts";
 import { supabase } from "@/lib/supabaseClient";
 import Logo from "@/components/ui/Logo";
+import Footer from "@/components/layout/Footer";
 
 type SessionUser = {
   id: string;
@@ -375,12 +376,8 @@ export default function SellerDashboardPage() {
         </div>
       </main>
 
-      <footer className="bg-[#1a1a1a] border-t border-[#3a3a3a] py-6 px-4">
-        <div className="container mx-auto flex flex-col gap-3 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
-          <Logo size="sm" variant="white" showText={true} href="/" />
-          <p>© 2025 Warungpedia. All rights reserved.</p>
-        </div>
-      </footer>
+      {/* Footer */}
+      <Footer variant="compact" />
     </div>
   );
 }

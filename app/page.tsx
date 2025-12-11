@@ -11,6 +11,7 @@ import {
   type Role,
   type UserLike,
 } from "@/lib/auth/roles";
+import Footer from "@/components/layout/Footer";
 
 // --- Types ---
 type ProductCard = {
@@ -737,17 +738,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#2f2f2f] bg-[#121212] mt-12">
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Logo size="sm" variant="white" showText={false} />
-              <span>Warungpedia © 2025</span>
-            </div>
-            <p>Katalog Produk Marketplace UMKM Indonesia</p>
-          </div>
-        </div>
-      </footer>
+      <Footer variant="full" className="mt-12" />
     </div>
   );
 }

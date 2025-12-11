@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabaseClient";
+import Footer from "@/components/layout/Footer";
 
 type Condition = "BARU" | "BEKAS";
 
@@ -70,27 +71,29 @@ export default function UploadProdukPage() {
         if (active) router.replace("/login");
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      const role =
-        (session?.user.user_metadata as Record<string, unknown>)?.role ||
-        (session?.user.app_metadata as Record<string, unknown>)?.role;
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        const email = session?.user.email;
-        const adminEmails = [
-          process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
-        ];
-        if (role === "admin" || (email && adminEmails.includes(email))) {
-          supabase.auth.signOut();
-          router.replace("/login");
-          return;
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const role =
+          (session?.user.user_metadata as Record<string, unknown>)?.role ||
+          (session?.user.app_metadata as Record<string, unknown>)?.role;
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          const email = session?.user.email;
+          const adminEmails = [
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@warungpedia.id",
+          ];
+          if (role === "admin" || (email && adminEmails.includes(email))) {
+            supabase.auth.signOut();
+            router.replace("/login");
+            return;
+          }
+          setSellerId(session?.user?.id ?? null);
         }
-        setSellerId(session?.user?.id ?? null);
+        if (event === "SIGNED_OUT") {
+          setSellerId(null);
+          router.replace("/login");
+        }
       }
-      if (event === "SIGNED_OUT") {
-        setSellerId(null);
-        router.replace("/login");
-      }
-    });
+    );
 
     return () => {
       active = false;
@@ -120,10 +123,17 @@ export default function UploadProdukPage() {
     setGalleryPreview(asArray.map((f) => URL.createObjectURL(f)));
   };
 
-  const handleAddSpec = () => setSpecs((prev) => [...prev, { key: "", value: "" }]);
+  const handleAddSpec = () =>
+    setSpecs((prev) => [...prev, { key: "", value: "" }]);
 
-  const handleSpecChange = (idx: number, field: "key" | "value", value: string) => {
-    setSpecs((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  const handleSpecChange = (
+    idx: number,
+    field: "key" | "value",
+    value: string
+  ) => {
+    setSpecs((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
+    );
   };
 
   const handleRemoveSpec = (idx: number) => {
@@ -133,10 +143,10 @@ export default function UploadProdukPage() {
   const handleVariantChange = (
     idx: number,
     field: keyof Omit<VariantRow, "image" | "preview">,
-    value: string,
+    value: string
   ) => {
     setVariants((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)),
+      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v))
     );
   };
 
@@ -144,16 +154,27 @@ export default function UploadProdukPage() {
     setVariants((prev) =>
       prev.map((v, i) =>
         i === idx
-          ? { ...v, image: file, preview: file ? URL.createObjectURL(file) : null }
-          : v,
-      ),
+          ? {
+              ...v,
+              image: file,
+              preview: file ? URL.createObjectURL(file) : null,
+            }
+          : v
+      )
     );
   };
 
   const handleAddVariant = () => {
     setVariants((prev) => [
       ...prev,
-      { optionGroup: prev[0]?.optionGroup || "opsi", name: "", price: "", stock: "0", image: null, preview: null },
+      {
+        optionGroup: prev[0]?.optionGroup || "opsi",
+        name: "",
+        price: "",
+        stock: "0",
+        image: null,
+        preview: null,
+      },
     ]);
   };
 
@@ -174,14 +195,15 @@ export default function UploadProdukPage() {
         v.name.trim() ||
         v.price.trim() ||
         v.stock.trim() ||
-        v.image,
+        v.image
     );
     for (const v of activeVariants) {
       if (!v.optionGroup.trim() || !v.name.trim()) {
         return "Setiap varian yang diisi perlu option group dan nama.";
       }
       if (v.price && Number(v.price) < 0) return "Harga varian tidak valid.";
-      if (v.stock && Number.isNaN(Number(v.stock))) return "Stok varian tidak valid.";
+      if (v.stock && Number.isNaN(Number(v.stock)))
+        return "Stok varian tidak valid.";
     }
     return null;
   };
@@ -232,7 +254,7 @@ export default function UploadProdukPage() {
           v.name.trim() ||
           v.price.trim() ||
           v.stock.trim() ||
-          v.image,
+          v.image
       );
       const variantsPayload = activeVariants.map((v, idx) => ({
         option_group: v.optionGroup,
@@ -356,7 +378,11 @@ export default function UploadProdukPage() {
                 <p className="font-semibold text-white">Nama Produk</p>
                 <p>{name || "Belum diisi"}</p>
                 <p className="font-semibold text-white">Harga</p>
-                <p>{price ? `Rp${Number(price).toLocaleString("id-ID")}` : "Belum diisi"}</p>
+                <p>
+                  {price
+                    ? `Rp${Number(price).toLocaleString("id-ID")}`
+                    : "Belum diisi"}
+                </p>
                 <p className="font-semibold text-white">Kondisi</p>
                 <p>{condition === "BARU" ? "Baru" : "Bekas"}</p>
               </div>
@@ -451,7 +477,9 @@ export default function UploadProdukPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm text-gray-300">Spesifikasi (JSON)</label>
+                    <label className="text-sm text-gray-300">
+                      Spesifikasi (JSON)
+                    </label>
                   </div>
                   <button
                     type="button"
@@ -466,13 +494,17 @@ export default function UploadProdukPage() {
                     <div key={idx} className="flex gap-3">
                       <input
                         value={row.key}
-                        onChange={(e) => handleSpecChange(idx, "key", e.target.value)}
+                        onChange={(e) =>
+                          handleSpecChange(idx, "key", e.target.value)
+                        }
                         placeholder="Kunci (contoh: Berat)"
                         className="w-1/2 rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                       />
                       <input
                         value={row.value}
-                        onChange={(e) => handleSpecChange(idx, "value", e.target.value)}
+                        onChange={(e) =>
+                          handleSpecChange(idx, "value", e.target.value)
+                        }
                         placeholder="Nilai (contoh: 500gr)"
                         className="w-1/2 rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                       />
@@ -493,7 +525,9 @@ export default function UploadProdukPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm text-gray-300">Varian (opsional)</label>
+                    <label className="text-sm text-gray-300">
+                      Varian (opsional)
+                    </label>
                   </div>
                   <button
                     type="button"
@@ -513,13 +547,21 @@ export default function UploadProdukPage() {
                       <div className="flex flex-col gap-3 md:flex-row">
                         <input
                           value={v.optionGroup}
-                          onChange={(e) => handleVariantChange(idx, "optionGroup", e.target.value)}
+                          onChange={(e) =>
+                            handleVariantChange(
+                              idx,
+                              "optionGroup",
+                              e.target.value
+                            )
+                          }
                           placeholder="Option group (contoh: warna)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
                         <input
                           value={v.name}
-                          onChange={(e) => handleVariantChange(idx, "name", e.target.value)}
+                          onChange={(e) =>
+                            handleVariantChange(idx, "name", e.target.value)
+                          }
                           placeholder="Nama varian (contoh: 453 / 50gram)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -529,7 +571,9 @@ export default function UploadProdukPage() {
                           type="number"
                           min="0"
                           value={v.price}
-                          onChange={(e) => handleVariantChange(idx, "price", e.target.value)}
+                          onChange={(e) =>
+                            handleVariantChange(idx, "price", e.target.value)
+                          }
                           placeholder="Harga varian (opsional)"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -537,7 +581,9 @@ export default function UploadProdukPage() {
                           type="number"
                           min="0"
                           value={v.stock}
-                          onChange={(e) => handleVariantChange(idx, "stock", e.target.value)}
+                          onChange={(e) =>
+                            handleVariantChange(idx, "stock", e.target.value)
+                          }
                           placeholder="Stok varian"
                           className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] px-3 py-2 text-sm text-white focus:border-[#0779FF] focus:outline-none"
                         />
@@ -547,7 +593,12 @@ export default function UploadProdukPage() {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleVariantImage(idx, e.target.files?.[0] ?? null)}
+                            onChange={(e) =>
+                              handleVariantImage(
+                                idx,
+                                e.target.files?.[0] ?? null
+                              )
+                            }
                             className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#3a3a3a] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#0779FF] focus:outline-none"
                           />
                           {v.preview && (
@@ -582,13 +633,17 @@ export default function UploadProdukPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleMainPhotoChange(e.target.files?.[0] ?? null)}
+                  onChange={(e) =>
+                    handleMainPhotoChange(e.target.files?.[0] ?? null)
+                  }
                   className="w-full rounded-lg border border-[#2f2f2f] bg-[#121212] file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#0779FF] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#0779FF] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm text-gray-300">Gallery Foto (opsional)</label>
+                <label className="text-sm text-gray-300">
+                  Gallery Foto (opsional)
+                </label>
                 <input
                   type="file"
                   accept="image/*"
@@ -621,6 +676,9 @@ export default function UploadProdukPage() {
           </div>
         </section>
       </main>
+
+      {/* Footer */}
+      <Footer variant="compact" />
     </div>
   );
 }

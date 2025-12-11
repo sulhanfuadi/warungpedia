@@ -8,6 +8,7 @@ import {
   RegionSelect,
   useRegionSelect,
 } from "@/components/shared/RegionSelect";
+import Footer from "@/components/layout/Footer";
 
 interface PasswordStrength {
   hasMinLength: boolean;
@@ -963,32 +964,7 @@ export default function RegisterPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#1a1a1a] border-t border-[#3a3a3a] py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-center md:text-left">
-              <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
-                <Logo size="sm" variant="white" showText={true} href="/" />
-              </div>
-              <p className="text-gray-400 text-sm">
-                Platform Marketplace untuk UMKM Indonesia
-              </p>
-            </div>
-            <div className="text-gray-400 text-sm text-center md:text-right">
-              <p>© 2025 Warungpedia. All rights reserved.</p>
-              <p className="mt-1">
-                Butuh bantuan?{" "}
-                <a
-                  href="mailto:support@warungpedia.id"
-                  className="text-[#0779FF] hover:underline"
-                >
-                  support@warungpedia.id
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer variant="full" />
     </div>
   );
 }
