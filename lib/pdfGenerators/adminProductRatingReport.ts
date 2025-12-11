@@ -9,12 +9,12 @@ const ROW_ALT_BG = rgb(0.95, 0.95, 0.95);
 
 const columns = [
   { key: "no", title: "No.", width: 34 },
-  { key: "product", title: "Nama Produk", width: 180 },
-  { key: "store", title: "Nama Toko", width: 160 },
+  { key: "product", title: "Produk", width: 150 },
   { key: "category", title: "Kategori", width: 110 },
   { key: "price", title: "Harga", width: 110 },
-  { key: "province", title: "Provinsi", width: 110 },
   { key: "rating", title: "Rating", width: 70 },
+  { key: "store", title: "Nama Toko", width: 150 },
+  { key: "province", title: "Provinsi", width: 110 },
 ] as const;
 
 type ColumnKey = (typeof columns)[number]["key"];
@@ -22,11 +22,11 @@ type ColumnKey = (typeof columns)[number]["key"];
 const columnGetter: Record<ColumnKey, (record: ProductRatingRecord, index: number) => string> = {
   no: (_record, index) => (index + 1).toString(),
   product: (record) => record.name,
-  store: (record) => record.storeName,
   category: (record) => record.category,
   price: (record) => formatCurrency(record.price),
-  province: (record) => record.province,
   rating: (record) => record.rating.toFixed(2),
+  store: (record) => record.storeName,
+  province: (record) => record.province,
 };
 
 function formatCurrency(value: number): string {
