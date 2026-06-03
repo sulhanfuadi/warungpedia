@@ -1,5 +1,6 @@
 import { expect, test, describe } from 'vitest';
 import { validateProductFeedback } from '../../lib/utils/productFeedbackValidator';
+import type { NewProductFeedbackInput } from '../../lib/models/productFeedback';
 
 describe('productFeedbackValidator', () => {
   test('Memvalidasi productFeedbackValidator menerima input valid', () => {
@@ -11,7 +12,7 @@ describe('productFeedbackValidator', () => {
         province: 'Jawa Tengah',
         comment: 'Sangat bagus dan memuaskan',
         productId: 'prod-1'
-    } as any);
+    } as unknown as NewProductFeedbackInput);
     expect(res.isValid).toBe(true);
   });
 
@@ -24,7 +25,7 @@ describe('productFeedbackValidator', () => {
         province: 'Jawa Tengah',
         comment: 'Sangat bagus dan memuaskan',
         productId: 'prod-1'
-    } as any);
+    } as unknown as NewProductFeedbackInput);
     expect(res.isValid).toBe(false);
   });
 });
