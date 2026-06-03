@@ -5,11 +5,12 @@ describe('productFeedbackValidator', () => {
   test('Memvalidasi productFeedbackValidator menerima input valid', () => {
     const res = validateProductFeedback({
         rating: 5,
-        reviewerName: 'John',
-        reviewerPhone: '081234567890',
-        reviewerEmail: 'test@example.com',
-        reviewerProvince: 'Jawa Tengah',
-        comment: 'Bagus'
+        name: 'John Doe',
+        phone: '081234567890',
+        email: 'test@example.com',
+        province: 'Jawa Tengah',
+        comment: 'Sangat bagus dan memuaskan',
+        productId: 'prod-1'
     } as any);
     expect(res.isValid).toBe(true);
   });
@@ -17,11 +18,12 @@ describe('productFeedbackValidator', () => {
   test('Memvalidasi productFeedbackValidator menolak input rating di luar batas 1-5', () => {
     const res = validateProductFeedback({
         rating: 6,
-        reviewerName: 'John',
-        reviewerPhone: '081234567890',
-        reviewerEmail: 'test@example.com',
-        reviewerProvince: 'Jawa Tengah',
-        comment: 'Bagus'
+        name: 'John Doe',
+        phone: '081234567890',
+        email: 'test@example.com',
+        province: 'Jawa Tengah',
+        comment: 'Sangat bagus dan memuaskan',
+        productId: 'prod-1'
     } as any);
     expect(res.isValid).toBe(false);
   });
