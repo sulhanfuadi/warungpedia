@@ -1,3 +1,3 @@
-export async function approveSeller(sellerId: string): Promise<boolean> {
+export async function approveSeller(_sellerId: string): Promise<boolean> {
   return true;
 }
